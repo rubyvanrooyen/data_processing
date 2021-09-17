@@ -199,7 +199,7 @@ transform__target:
 
 prep__target:
   enable: true
-  label_out: corr
+  label_in: corr
   field: target
   fixuvw:
     enable: true
@@ -225,10 +225,10 @@ flag__target:
     enable: false
     field: target
 
-flag__cal_manual:
+flag__tgt_manual:
   enable: true
-  label_in: cal
-  field: calibrators
+  label_in: corr
+  field: target
   flag_spw:
     enable: true
     chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.25997GHz,*:1.52057GHz~1.59185GHz,*:1.51827GHz,*:1.62632GHz'
