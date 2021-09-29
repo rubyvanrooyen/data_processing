@@ -1,7 +1,19 @@
 # Setup
 
 ## Installation
-Python virtual env
+Python virtual env    
+Depending on the python version you have, some notes on setting up a python virtual environment
+dedicated to getting data out of the archive
+
+```
+python3.x -m venv venv3.x
+```
+e.g.
+```
+python3.6 -m venv venv3.6
+python3.7 -m venv venv3.7
+```
+
 ### make your python virtual env version specific
 ```
 python3.7 -m venv venv3.7
@@ -29,6 +41,8 @@ source venv3.7/bin/activate
 ```
 pip install katdal
 pip install python-casacore
+pip cache purge
+deactivate
 ```
 ### exit venv
 ```
@@ -37,6 +51,12 @@ deactivate
 
 ## Extraction
 Get data from archive    
+Using screen/tmux session
+`tmux new -s g330` or
+```
+tmux ls
+tmux a -t g330
+```
 ### activate python virtual
 ```
 source venv3.7/bin/activate
