@@ -12,19 +12,92 @@ Targets: 3 selected out of 3 in catalogue
    2  J1726-5529    radec     17:26:49.63  -55:29:40.5  gaincal
 ```
 
+## CASA data
+Selected individual sources for CASA recipe extraction to caracal pipeline   
+```
+# primary calibrator
+ ./getms.sh -r 163,3885 --t J1939-6342 https://archive-gw-1.kat.ac.za/1626935818/1626935818_sdp_l0.full.rdb?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJrYXQtYXJjaGl2ZS5rYXQuYWMuemEiLCJhdWQiOiJhcmNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjI2OTU2NjMwLCJwcmVmaXgiOlsiMTYyNjkzNTgxOCJdLCJleHAiOjE2Mjc1NjE0MzAsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.wye2P0SprT-13CZLcWLYhhyeg_NLwgUWFOJUoku2BcKuEnKcUTPQ3uh_AoyY05tUdD0Wvy7WkaNRdLYkvub6Og
+# secondary calibrator
+ ./getms.sh -r 163,3885 --t J1726-5529 https://archive-gw-1.kat.ac.za/1626935818/1626935818_sdp_l0.full.rdb?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJrYXQtYXJjaGl2ZS5rYXQuYWMuemEiLCJhdWQiOiJhcmNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjI2OTU2NjMwLCJwcmVmaXgiOlsiMTYyNjkzNTgxOCJdLCJleHAiOjE2Mjc1NjE0MzAsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.wye2P0SprT-13CZLcWLYhhyeg_NLwgUWFOJUoku2BcKuEnKcUTPQ3uh_AoyY05tUdD0Wvy7WkaNRdLYkvub6Og
+```
+
+## CARACAL data
+Wideband data extraction (full data set):   
+```
+mvftoms.py -f --flags cam
+https://archive-gw-1.kat.ac.za/1625501775/1625501775_sdp_l0.full.rdb?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJrYXQtYXJjaGl2ZS5rYXQuYWMuemEiLCJhdWQiOiJhcmNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjI3ODk5MzY3LCJwcmVmaXgiOlsiMTYyNTUwMTc3NSJdLCJleHAiOjE2Mjg1MDQxNjcsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.EX2msmU0UaR-BNk9ybE3GxmPIwvNHTaY_OqTjChBuoGx1UJnYQhnaWtHDNZugbqXfckGasLafqCCUHSX5ukbjA
+```
+Narrow band data set (10 MHz chunk):   
+```
+mvftoms.py -f -a --flags cam -C 12709,18834
+https://archive-gw-1.kat.ac.za/1625501782/1625501782_sdp_l0.full.rdb?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJrYXQtYXJjaGl2ZS5rYXQuYWMuemEiLCJhdWQiOiJhcmNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjI3ODk5MzY3LCJwcmVmaXgiOlsiMTYyNTUwMTc4MiJdLCJleHAiOjE2Mjg1MDQxNjcsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.vTg4NmDeOcrtftLqHC9_b9ni8XrXLRpHO3sEzFRRpRojgCCFwmBksHvsKUlMQzFgJLiUnoltx6gwaTtfrZjP8Q
+```
+
+
+## TMUX setup
 Using screen/tmux session
-`tmux new -s g330` or
+### start tmux session
+```
+tmux new -s g330
+```
+### attach to tmux session
 ```
 tmux ls
 tmux a -t g330
 ```
 
-Get data from archive
+
+## Get data from archive
+### symbolic link to data extraction script
+```
+ln -s katcomm/Users/ruby/oh_masers/bin/getms.sh
+```
+
 ```
 mvftoms.py -f --flags cam <katdaltoken>
 ```
 
-Running pipeline
+
+## CASA on com14 using singularity
+Not doing a new CASA installation, using the old singularity image to view the data with CASA    
+Basic bash prompt inside the container
+```
+singularity shell -B /scratch/ruby /scratch/shared/containers/singularity/sarao_science.simg
+```
+or
+```
+singularity exec -B /scratch/ruby /scratch/shared/containers/singularity/sarao_science.simg /bin/bash --norc
+```
+
+CASA binary lives in:`ls /usr/src/casa/casa-release-5.3.0-143.el7/bin/`    
+for convenience, create a symbolic link: `ln -s /usr/src/casa/casa-release-5.3.0-143.el7/bin/casa`
+```
+./casa --log2term --nologger
+```
+
+### remove CASA generated cvel directories to clear up space.
+From directory: /home/data/OH_monitoring -- run command
+```
+./bin/zap_cvel.sh
+```
+
+### inspecting data
+View the calibrator data for initial flagging using the calibrators and wideband data
+<link to notebook link>
+Use only frequency, time periods and explicit target names to allow mapping of CASA flags to caracal   
+However, for the averaging, use the ms information since it is only for visualisation and
+smoothing/averaging of the data.
+
+
+## Caracal
+* Extract you data from the archive using `getms.sh`
+* Construct the caracal pipeline config file (config-1625501775_sdp_l0-4k.yml)
+* Run caracal pipeline process
+```
+caracal -c config-1625501775_sdp_l0-4k.yml
+```
+
+### Running pipeline
 ```
 source venv3.7/bin/activate
 ln -s /scratch/ruby/g330/data/ ms-orig
@@ -49,6 +122,5 @@ To remove all output, as well as
 ```
 make clobber
 ```
-
 
 -fin-
