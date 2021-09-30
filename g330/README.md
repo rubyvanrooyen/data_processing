@@ -32,7 +32,10 @@ Narrow band data set (10 MHz chunk):
 mvftoms.py -f -a --flags cam -C 12709,18834
 https://archive-gw-1.kat.ac.za/1625501782/1625501782_sdp_l0.full.rdb?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJrYXQtYXJjaGl2ZS5rYXQuYWMuemEiLCJhdWQiOiJhcmNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjI3ODk5MzY3LCJwcmVmaXgiOlsiMTYyNTUwMTc4MiJdLCJleHAiOjE2Mjg1MDQxNjcsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.vTg4NmDeOcrtftLqHC9_b9ni8XrXLRpHO3sEzFRRpRojgCCFwmBksHvsKUlMQzFgJLiUnoltx6gwaTtfrZjP8Q
 ```
-
+Make data readonly
+```
+chmod -R-w <filename>.ms
+```
 
 ## TMUX setup
 Using screen/tmux session
