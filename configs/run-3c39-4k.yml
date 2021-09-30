@@ -2,6 +2,8 @@
 
 schema_version: 1.0.4
 
+# Compulsory worker to set up data/input/output directories.
+# The prefix used for the output data products (e.g., diagnostic plots, images, etc.).
 general:
   prefix: 3C39
   title: 3C39
@@ -11,15 +13,22 @@ general:
   rawdatadir: ms-orig
   output: output-3c39wide-4k
 
+# Compulsory worker to specify the input .MS files.
 getdata:
   dataid: [1627186156_sdp_l0]
   extension: ms
 
+# Compulsory worker to set up target/calibrators names.
 obsconf:
   refant: auto
 
 
 ## Processing calibrators
+
+# Split calibrators-only .MS files, one per input .MS file.
+# This worker splits the calibrators (in preparation for cross-calibration) or the targets (in
+# preparation for imaging) to new .MS files. Time and frequency averaging is available, as well as
+# phase rotation to a new phase centre. Crosscalibration can be applied on the fly while splitting.
 transform__calibrators:
   enable: true
   label_out: cal
@@ -28,6 +37,7 @@ transform__calibrators:
     enable: true
     col: data
 
+# Prepare the calibrators-only .MS files for processing.
 prep__calibrators:
   enable: true
   label_in: cal
@@ -39,6 +49,7 @@ prep__calibrators:
     enable: true
     mode: uniform
 
+# Flag the calibrators-only .MS files.
 flag__calibrators:
   enable: true
   label_in: cal
@@ -57,6 +68,7 @@ flag__calibrators:
     mask: meerkat.rfimask.npy
     uvrange: '0~1000'
 
+# Flag RFI using AOFlagger, Tricolour, or CASA FLAGDATA with tfcrop.
 flag__cal_rfi:
   enable: true
   label_in: cal
@@ -86,6 +98,8 @@ flag__cal_rfi:
 #     - 1557* scan:49
 #     - 1568* antenna:m024;m036
 
+# Derive the cross-calibration tables and apply them to the calibrators.
+# Carry out Cross calibration of the data (delay, bandpass and gain calibration).
 crosscal:
   enable: true
   label_in: cal
@@ -110,17 +124,15 @@ crosscal:
     solint: [inf, inf, null, 60s, 60s]
     calmode: [ap, ap, null, ap, ap]
     plotgains: true
-    image:
-      npix: 10000
-      cell: 0.8
-      niter: 100000
-      nchans: 8
   apply_cal:
     applyto:
       - fcal
       - bpcal
       - gcal
 
+# This worker plot the visibilities for diagnostic purpose. 
+# Inspect the calibrated calibrator’s visibilities to check the quality of the
+# cross-calibration.
 inspect:
   enable: true
   label_in: cal
@@ -200,6 +212,9 @@ inspect:
 
 
 ## Imaging wideband target
+
+# Split target-only .MS files, one per input .MS file and target, applying the
+# cross-calibration on the fly.
 transform__target:
   enable: true
   label_out: corr
@@ -214,6 +229,7 @@ transform__target:
         delay_cal: nearest
         gain_cal: linear
 
+# Prepare the target-only .MS files for processing.
 prep__target:
   enable: true
   label_in: corr
@@ -225,6 +241,7 @@ prep__target:
     enable: true
     mode: uniform
 
+# Flag the target-only .MS files.
 flag__target:
   enable: true
   label_in: corr
@@ -252,14 +269,14 @@ flag__target:
     enable: false
     field: target
 
-flag__tgt_manual:
-  enable: true
-  label_in: corr
-  field: target
-  flag_spw:
-    enable: true
-    chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.25997GHz,*:1.52057GHz~1.59185GHz,*:1.51827GHz,*:1.62632GHz'
-    ensure_valid: false
+# flag__tgt_manual:
+#   enable: true
+#   label_in: corr
+#   field: target
+#   flag_spw:
+#     enable: true
+#     chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.25997GHz,*:1.52057GHz~1.59185GHz,*:1.51827GHz,*:1.62632GHz'
+#     ensure_valid: false
 
 flag__target_rfi:
   enable: true
@@ -271,9 +288,14 @@ flag__target_rfi:
     tricolour:
       strategy: khruschev.yaml
 
+# This worker creates an a-priori clean mask based on NVSS or SUMSS, to be used during the continuum
+# imaging/self-calibration loop.
 mask:
   enable: false
 
+# This worker performs continuum imaging and standard (i.e., direction-independent) self-calibration.
+# Make a continuum image of each target, self-calibrate, and transfer both gains
+# and continuum model to the full-frequency-resolution target-only .MS files.
 selfcal:
   enable: true
   img_npix: 10000
@@ -295,6 +317,7 @@ selfcal:
   transfer_model:
     enable: false
 
+# Perform direction-dependent calibration on the data
 ddcal:
   enable: false
   label_in: corr
@@ -308,5 +331,6 @@ ddcal:
     enable: true
   transfer_model_dd:
     enable: true
+
 
 # -fin-
