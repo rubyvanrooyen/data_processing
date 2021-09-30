@@ -310,7 +310,8 @@ flag__tgt_manual:
 #   enable: true
 # #   field: *tgt_sources
 #   field: target
-#   label_in: *tgt_label
+# #   label_in: *tgt_label
+#   label_in: corr
 # #   flag_rfi: *flag_rfi
 #   flag_rfi:
 #     enable: true
