@@ -9,7 +9,7 @@ general:
   title: 3C39
   # Location where CARACal will write and expect to find .MS files
   msdir: msdir
-  # This directory and the input .MS files within it can be reado-only
+  # This directory and the input .MS files within it can be read-only
   rawdatadir: ms-orig
   output: output-3c39wide-4k
 
@@ -79,24 +79,18 @@ flag__cal_rfi:
     tricolour:
       strategy: khruschev.yaml
 
-# flag__cal_manual:
-#   enable: true
-#   label_in: cal
-#   field: calibrators
-#   flag_spw:
-#     enable: true
-#     chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.25997GHz,*:1.52057GHz~1.59185GHz,*:1.51827GHz,*:1.62632GHz'
-#     ensure_valid: false
-#   flag_time:
-#     enable: true
-#     timerange: '2021/07/05/16:17:30~2021/07/05/16:18:51'
-#     ensure_valid: false
-#   flag_manual:
-#     enable: true
-#     rules:
-#     - *1775 antenna:m00x
-#     - 1557* scan:49
-#     - 1568* antenna:m024;m036
+flag__cal_manual:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_spw:
+    enable: true
+    chans: '*:1.41942GHz~1.4213GHz,*:1.52036GHz~1.59163GHz,*:1.62611GHz~1.62673GHz'
+    ensure_valid: false
+  flag_time:
+    enable: true
+    timerange: '2021/07/25/04:12:27~2021/07/25/04:12:28,2021/07/25/04:12:35~2021/07/25/04:12:52,2021/07/25/05:06:26~2021/07/25/05:06:35,2021/07/25/07:34:22~2021/07/25/07:35:19'
+    ensure_valid: false
 
 # Derive the cross-calibration tables and apply them to the calibrators.
 # Carry out Cross calibration of the data (delay, bandpass and gain calibration).
@@ -259,24 +253,22 @@ flag__target:
     enable: true
     mask: meerkat.rfimask.npy
     uvrange: '0~1000'
-#   flag_manual:
-#     enable: true
-#     rules:
-#       - '1557* antenna:m007'
-#       - '1568* antenna:m024;m036'
-#       - '1568* scan:35 uvrange:1000~9000'
   inspect:
     enable: false
     field: target
 
-# flag__tgt_manual:
-#   enable: true
-#   label_in: corr
-#   field: target
-#   flag_spw:
-#     enable: true
-#     chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.25997GHz,*:1.52057GHz~1.59185GHz,*:1.51827GHz,*:1.62632GHz'
-#     ensure_valid: false
+flag__tgt_manual:
+  enable: true
+  label_in: corr
+  field: target
+  flag_spw:
+    enable: true
+    chans: '*:0.960806GHz~0.961642GHz,*:1.41942GHz~1.4213GHz,*:1.51921GHz~1.59163GHz,*:1.62611GHz~1.63039GHz'
+    ensure_valid: false
+  flag_time:
+    enable: true
+    timerange: '2021/07/25/07:10:39~2021/07/25/07:11:36'
+    ensure_valid: false
 
 flag__target_rfi:
   enable: true
