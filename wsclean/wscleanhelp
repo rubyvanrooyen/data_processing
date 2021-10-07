@@ -1,0 +1,319 @@
+
+WSClean version 2.5 (2017-12-01)
+This software package is released under the GPL version 3.
+Author: André Offringa (offringa@gmail.com).
+
+Syntax: wsclean [options] <input-ms> [<2nd-ms> [..]]
+Will create cleaned images of the input ms(es).
+If multiple mses are specified, they need to be phase-rotated to the same point on the sky.
+
+Options can be:
+
+  ** GENERAL OPTIONS **
+-version
+   Print WSClean's version and exit.
+-j <threads>
+   Specify number of computing threads to use, i.e., number of cpu cores that will be used.
+   Default: use all cpu cores.
+-mem <percentage>
+   Limit memory usage to the given fraction of the total system memory. This is an approximate value.
+   Default: 100.
+-abs-mem <memory limit>
+   Like -mem, but this specifies a fixed amount of memory in gigabytes.
+-verbose (or -v)
+   Increase verbosity of output.
+-log-time
+   Add date and time to each line in the output.
+-quiet
+   Do not output anything but errors.
+-reorder
+-no-reorder
+   Force or disable reordering of Measurement Set. This can be faster when the measurement set needs to
+   be iterated several times, such as with many major iterations or in channel imaging mode.
+   Default: only reorder when in channel imaging mode.
+-temp-dir <directory>
+   Set the temporary directory used when reordering files. Default: same directory as input measurement set.
+-update-model-required (default), and
+-no-update-model-required
+   These two options specify wether the model data column is required to
+   contain valid model data after imaging. It can save time to not update
+   the model data column.
+-no-dirty
+   Do not save the dirty image.
+-save-weights
+   Save the gridded weights in the a fits file named <image-prefix>-weights.fits.
+-save-uv
+   Save the gridded uv plane, i.e., the FFT of the residual image. The UV plane is complex, hence
+   two images will be output: <prefix>-uv-real.fits and <prefix>-uv-imag.fits.
+-apply-primary-beam
+   Calculate and apply the primary beam and save images for the Jones components, with weighting identical to the
+   weighting as used by the imager. Only available for LOFAR.
+-reuse-primary-beam
+   If a primary beam image exists on disk, reuse those images.
+-use-differential-lofar-beam
+   Assume the visibilities have already been beam-corrected for the reference direction.
+-save-psf-pb
+   When applying beam correction, also save the primary-beam corrected PSF image.
+
+  ** WEIGHTING OPTIONS **
+-weight <weightmode>
+   Weightmode can be: natural, uniform, briggs. Default: uniform. When using Briggs' weighting,
+   add the robustness parameter, like: "-weight briggs 0.5".
+-super-weight <factor>
+   Increase the weight gridding box size, similar to Casa's superuniform weighting scheme. Default: 1.0
+   The factor can be rational and can be less than one for subpixel weighting.
+-mfs-weighting
+   In spectral mode, calculate the weights as if the image was made using MFS. This makes sure that the sum of
+   channel images equals the MFS weights. Otherwise, the channel image will become a bit more naturally weighted.
+   This is only relevant for weighting modes that require gridding (i.e., Uniform, Briggs').
+   Default: off, unless -join-channels is specified.
+-no-mfs-weighting
+   Opposite of -mfs-weighting; can be used to turn off MFS weighting in -join-channels mode.
+-weighting-rank-filter <level>
+   Filter the weights and set high weights to the local mean. The level parameter specifies
+   the filter level; any value larger than level*localmean will be set to level*localmean.
+-weighting-rank-filter-size <size>
+   Set size of weighting rank filter. Default: 16.
+-taper-gaussian <beamsize>
+   Taper the weights with a Gaussian function. This will reduce the contribution of long baselines.
+   The beamsize is by default in asec, but a unit can be specified ("2amin").
+-taper-tukey <lambda>
+   Taper the outer weights with a Tukey transition. Lambda specifies the size of the transition; use in
+   combination with -maxuv-l.
+-taper-inner-tukey <lambda>
+   Taper the weights with a Tukey transition. Lambda specifies the size of the transition; use in
+   combination with -minuv-l.
+-taper-edge <lambda>
+   Taper the weights with a rectangle, to keep a space of lambda between the edge and gridded visibilities.
+-taper-edge-tukey <lambda>
+   Taper the edge weights with a Tukey window. Lambda is the size of the Tukey transition. When -taper-edge
+   is also specified, the Tukey transition starts inside the inner rectangle.
+-store-imaging-weights
+   Will store the imaging weights in a column named 'IMAGING_WEIGHT_SPECTRUM'.
+
+  ** INVERSION OPTIONS **
+-name <image-prefix>
+   Use image-prefix as prefix for output files. Default is 'wsclean'.
+-size <width> <height>
+   Set the output image size in number of pixels (without padding).
+-padding <factor>
+   Pad images by the given factor during inversion to avoid aliasing. Default: 1.2 (=20%).
+-scale <pixel-scale>
+   Scale of a pixel. Default unit is degrees, but can be specificied, e.g. -scale 20asec. Default: 0.01deg.
+-predict
+   Only perform a single prediction for an existing image. Doesn't do any imaging or cleaning.
+   The input images should have the same name as the model output images would have in normal imaging mode.
+-predict-channels <nchannels>
+   Interpolate from a given number of images to the number of channels that are predicted
+   as specified by -channelsout. Will interpolate using the frequencies of the images.
+   Use one of the -fit-spectral-... options to specify the interpolation method / freedom.
+   Only used when -predict is specified.
+-continue
+   Will continue an earlier WSClean run. Earlier model images will be read and model visibilities will be
+   subtracted to create the first dirty residual. CS should have been used in the earlier run, and model data   should have been written to the measurement set for this to work. Default: off.
+-subtract-model
+   Subtract the model from the data column in the first iteration. This can be used to reimage
+   an already cleaned image, e.g. at a different resolution.
+-channels-out <count>
+   Splits the bandwidth and makes count nr. of images. Default: 1.
+-nwlayers <nwlayers>
+   Number of w-layers to use. Default: minimum suggested #w-layers for first MS.
+-nwlayers-for-size <width> <height>
+   Use the minimum suggested w-layers for an image of the given size. Can e.g. be used to increase
+   accuracy when predicting small part of full image. 
+-no-small-inversion and -small-inversion
+   Perform inversion at the Nyquist resolution and upscale the image to the requested image size afterwards.
+   This speeds up inversion considerably, but makes aliasing slightly worse. This effect is
+   in most cases <1%. Default: on.
+-grid-mode <"nn", "kb" or "rect">
+   Kernel and mode used for gridding: kb = Kaiser-Bessel (default with 7 pixels), nn = nearest
+   neighbour (no kernel), rect = rectangular window. Default: kb.
+-kernel-size <size>
+   Gridding antialiasing kernel size. Default: 7.
+-oversampling <factor>
+   Oversampling factor used during gridding. Default: 63.
+-make-psf
+   Always make the psf, even when no cleaning is performed.
+-make-psf-only
+   Only make the psf, no images are made.
+-save-gridding
+   Save the gridding correction image. This shows the effect of the antialiasing filter. Default: not saved.
+-dft-prediction
+   Predict via a direct Fourier transform. This is slow, but can account for direction-dependent effects. This has
+   only effect when -mgain is set or -predict is given.
+-dft-with-beam
+   Apply the beam during DFT. Currently only works for LOFAR.
+-visibility-weighting-mode [normal/squared/unit]
+   Specify visibility weighting modi. Affects how the weights (normally) stored in
+   WEIGHT_SPECTRUM column are applied. Useful for estimating e.g. EoR power spectra errors.
+   Normally one would use this in combination with -no-normalize-for-weighting.
+-no-normalize-for-weighting
+   Disable the normalization for the weights, which makes the PSF's peak one. See
+   -visibility-weighting-mode. Only useful with natural weighting.
+-baseline-averaging <size-in-wavelengths>
+   Enable baseline-dependent averaging. The specified size is in number of wavelengths (i.e., uvw-units). One way
+   to calculate this is with <baseline in nr. of lambdas> * 2pi * <acceptable integration in s> / (24*60*60).
+-simulate-noise <stddev-in-jy>
+   Will replace every visibility by a Gaussian distributed value with given standard deviation before imaging.
+-grid-with-beam
+   Apply a-terms to correct for the primary beam. This is only possible when IDG is enabled.
+
+  ** DATA SELECTION OPTIONS **
+-pol <list>
+   Default: 'I'. Possible values: XX, XY, YX, YY, I, Q, U, V, RR, RL, LR or LL (case insensitive).
+   Multiple values can be separated with commas, e.g.: 'xx,xy,yx,yy'. Two or four polarizations can be
+   joinedly cleaned (see '-joinpolarizations'), but this is not the default. I, Q, U and V
+   polarizations will be directly calculated from the visibilities, which is not appropriate for
+   telescopes with non-orthogonal feeds, such as MWA and LOFAR. The 'xy' polarization will output both
+   a real and an imaginary image, which allows calculating true Stokes polarizations for those
+   telescopes.
+-interval <start-index> <end-index>
+   Only image the given time interval. Indices specify the timesteps, end index is exclusive.
+   Default: image all time steps.
+-intervals-out <count>
+   Number of intervals to image inside the selected global interval. Default: 1
+-channel-range <start-channel> <end-channel>
+   Only image the given channel range. Indices specify channel indices, end index is exclusive.
+   Default: image all channels.
+-field <fieldid>
+   Image the given field id. Default: first field (id 0).
+-spws <list>
+   Selects only the spws given in the list. list should be a comma-separated list of integers. Default: all spws.
+-data-column <columnname>
+   Default: CORRECTED_DATA if it exists, otherwise DATA will be used.
+-maxuvw-m <meters>
+-minuvw-m <meters>
+   Set the min/max baseline distance in meters.
+-maxuv-l <lambda>
+-minuv-l <lambda>
+   Set the min/max uv distance in lambda.
+-maxw <percentage>
+   Do not grid visibilities with a w-value higher than the given percentage of the max w, to save speed.
+   Default: grid everything
+
+  ** DECONVOLUTION OPTIONS **
+-niter <niter>
+   Maximum number of clean iterations to perform. Default: 0 (=no cleaning)
+-nmiter <nmiter>
+   Maximum number of major clean (inversion/prediction) iterations. Default: 20.   A value of 0 means no limit.
+-threshold <threshold>
+   Stopping clean thresholding in Jy. Default: 0.0
+-auto-threshold <sigma>
+   Estimate noise level using a robust estimator and stop at sigma x stddev.
+-auto-mask <sigma>
+   Construct a mask from found components and when a threshold of sigma is reached, continue
+   cleaning with the mask down to the normal threshold. 
+-local-rms
+   Instead of using a single RMS for auto thresholding/masking, use a spatially varying
+   RMS image.
+-local-rms-window
+   Size of window for creating the RMS background map, in number of PSFs. Default: 25 psfs.
+-local-rms-method
+   Either 'rms' (default, uses sliding window RMS) or 'rms-with-min' (use max(window rms, 0.3 x window min)).
+-gain <gain>
+   Cleaning gain: Ratio of peak that will be subtracted in each iteration. Default: 0.1
+-mgain <gain>
+   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major
+   iteration. To use major iterations, 0.85 is a good value. Default: 1.0
+-join-polarizations
+   Perform cleaning by searching for peaks in the sum of squares of the polarizations, but
+   subtract components from the individual images. Only possible when imaging two or four Stokes
+   or linear parameters. Default: off.
+-join-channels
+   Perform cleaning by searching for peaks in the MFS image, but subtract components from individual channels.
+   This will turn on mfsweighting by default. Default: off.
+-multiscale
+   Clean on different scales. This is a new algorithm. Default: off.
+   This parameter invokes the v1.9 multiscale algorithm, which is slower but more accurate
+   compared to the older algorithm, and therefore the recommended one to use.
+-multiscale-threshold-bias
+   Parameter to lower the threshold for larger scales. The used threshold for a scale
+   is threshold(scale)=pointsource_threshold x tbias^scale. A lower bias will clean
+   larger scales deeper. Default: 0.7
+-multiscale-scale-bias
+   Parameter to prevent cleaning small scales in the large-scale iterations. A higher
+   bias will give more focus to larger scales. Default: 0.6
+-multiscale-scales <comma-separated list of sizes in pixels>
+   Sets a list of scales to use in multi-scale cleaning. If unset, WSClean will select the delta
+   (zero) scale, scales starting at four times the synthesized PSF, and increase by a factor of
+   two until the maximum scale is reached. Example: -multiscale-scales 0,5,12.5
+-multiscale-shape <shape>
+   Sets the shape function used during multi-scale clean. Either 'tapered-quadratic' (default) or 'gaussian'.
+-multiscale-gain <gain>
+   Size of step made in the subminor loop of multi-scale. Default currently 0.2, but shows sign of instability.
+   A value of 0.1 might be more stable.
+-multiscale-convolution-padding <padding>
+   Size of zero-padding for convolutions during the multi-scale cleaning.
+-no-multiscale-fast-subminor
+   Disable the 'fast subminor loop' optimization, that will only search a part of the
+   image during the multi-scale subminor loop. The optimization is on by default.
+-iuwt
+   Use the IUWT deconvolution algorithm.
+-iuwt-snr-test / -no-iuwt-snr-test
+   Stop (/do not stop) IUWT when the SNR decreases. This might help limitting divergence, but can
+   occasionally also stop the algorithm too early. Default: no SNR test.
+-moresane-ext <location>
+   Use the MoreSane deconvolution algorithm, installed at the specified location.
+-moresane-arg <arguments>
+   Pass the specified arguments to moresane. Note that multiple parameters have to be
+   enclosed in quotes.
+-moresane-sl <sl1,sl2,...>
+   MoreSane --sigmalevel setting for each major loop iteration. Useful to start at high
+   levels and go down with subsequent loops, e.g. 20,10,5
+-save-source-list
+   Saves the found clean components as a BBS/NDPPP text sky model. This parameter 
+   enables Gaussian shapes during multi-scale cleaning (-multiscale-shape gaussian).
+-clean-border <percentage>
+   Set the border size in which no cleaning is performed, in percentage of the width/height of the image.
+   With an image size of 1000 and clean border of 1%, each border is 10 pixels. Default: 0%
+-fits-mask <mask>
+   Use the specified fits-file as mask during cleaning.
+-casa-mask <mask>
+   Use the specified CASA mask as mask during cleaning.
+-no-negative
+   Do not allow negative components during cleaning. Not the default.
+-negative
+   Default on: opposite of -nonegative.
+-stop-negative
+   Stop on negative components. Not the default.
+-fit-spectral-pol <nterms>
+   Fit a polynomial over frequency to each clean component. This has only effect
+   when the channels are joined with -join-channels.
+-fit-spectral-log-pol <nterms>
+   Like fit-spectral-pol, but fits a logarithmic polynomial over frequency instead.
+-deconvolution-channels <nchannels>
+   Decrease the number of channels as specified by -channels-out to the given number for
+   deconvolution. Only possible in combination with one of the -fit-spectral options.
+   Proper residuals/restored images will only be returned when mgain < 1.
+-squared-channel-joining
+   Use with -join-channels to perform peak finding in the sum of squared values over
+   channels, instead of the normal sum. This is useful for imaging QU polarizations
+   with non-zero rotation measures, for which the normal sum is insensitive.
+-force-dynamic-join
+   Use alternative joined clean algorithm (feature for testing).
+
+  ** RESTORATION OPTIONS **
+-restore <input residual> <input model> <output image>
+   Restore the model image onto the residual image and save it in output image. By
+   default, the beam parameters are read from the residual image. If this parameter
+   is given, wsclean will do the restoring and then exit: no cleaning is performed.
+-beam-size <arcsec>
+   Set a circular beam size (FWHM) in arcsec for restoring the clean components. This is
+   the same as -beam-shape <size> <size> 0.
+-beam-shape <maj in arcsec> <min in arcsec> <position angle in deg>
+   Set the FWHM beam shape for restoring the clean components. Defaults units for maj and min are arcsec, and
+   degrees for PA. Can be overriden, e.g. '-beam-shape 1amin 1amin 3deg'. Default: shape of PSF.
+-fit-beam
+   Determine beam shape by fitting the PSF (default if PSF is made).
+-no-fit-beam
+   Do not determine beam shape from the PSF.
+-theoretic-beam
+   Write the beam in output fits files as calculated from the longest projected baseline.
+   This method results in slightly less accurate beam size/integrated fluxes, but provides a beam size
+   without making the PSF for quick imaging. Default: off.
+-circular-beam
+   Force the beam to be circular: bmin will be set to bmaj.
+-elliptical-beam
+   Allow the beam to be elliptical. Default.
+
+For detailed help, check the WSClean website: http://wsclean.sourceforge.net/ .
