@@ -1,4 +1,5 @@
-
+Example configs for reference:
+* wideband_pipeline.yml
 
 Processing strategy:
 * Caracal pipelines function well to flag and calibrate large MS datasets.
