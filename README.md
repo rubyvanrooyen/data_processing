@@ -33,7 +33,7 @@ deactivate
 # Data
 
 ## Installation
-### activate python virtual
+### activate python virtual environment
 ```
 source venv3.7/bin/activate
 ```
@@ -218,8 +218,9 @@ http://localhost:5052/?socketUrl=ws://localhost:5051
 ---
 
 # Uninstall
+```
 pip uninstall radiopadre-client
 pip uninstall radiopadre
-
+```
 
 -fin-
