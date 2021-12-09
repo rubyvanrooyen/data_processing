@@ -9,7 +9,7 @@ general:
   title: G330
   # Location where CARACal will write and expect to find .MS files
   msdir: msdir
-  # This directory and the input .MS files within it can be reado-only
+  # This directory and the input .MS files within it can be read-only
   rawdatadir: ms-orig
   output: output-g330wide-4k
 #   cabs:
@@ -128,8 +128,8 @@ crosscal:
   uvrange: '>150'
   set_model:
     enable: true
-#    meerkat_skymodel: false
-    meerkat_skymodel: true
+#    meerkat_skymodel: true
+    meerkat_skymodel: false
   primary:
     reuse_existing_gains: true
     order: KGBAKGB
@@ -147,10 +147,11 @@ crosscal:
 #     order: KGAKF
     order: KGAKFI
     apply: B
-#     combine: ["", "", null, "", "", null]
+#     combine: ["", "", null, "", ""]
     combine: ["scan,field", "spw", null, "", "", null]
+#     solint: [inf, inf, null, 60s, 60s]
     solint: [inf, inf, null, 60s, 60s, null]
-#     calmode: [a, ap, null, a, ap] 
+#     calmode: [a, ap, null, a, ap]
     calmode: [ap, ap, null, ap, ap, null]
     plotgains: true
     image:
@@ -351,6 +352,7 @@ mask:
 # and continuum model to the full-frequency-resolution target-only .MS files.
 selfcal:
   enable: true
+  label_in: corr
   img_npix: 10000
   img_cell: 0.8
   img_nchans: 8
