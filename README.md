@@ -33,7 +33,7 @@ deactivate
 # Data
 
 ## Installation
-### activate python virtual
+### activate python virtual environment
 ```
 source venv3.7/bin/activate
 ```
@@ -142,34 +142,41 @@ deactivate
 ---
 
 # Visualisation
+Caracal pipeline produce diagnostic plots in a Jupyter notebook format and fits images.
+The easiest way to view these plots is using radiopadre
+
 ## Installation
+Installing radiopadre on a remote system to view caracal output on server
+See full description in Jira
+[SHAD-2](https://ruby-van-rooyen.atlassian.net/browse/SHAD-2)
+
 ### activate python virtual
+On linux
 ```
 source venv3.7/bin/activate
+```
+On mac
+```
+pyenv local 3.7.10
 ```
 ### install radiopadre
 ```
 pip install git+https://github.com/ratt-ru/radiopadre-client.git@b1.2.x
 ```
 ### start server
-go to the directory you want to run the server from
-radiopadre is going to create hidden directories and files in that directory
+On server
 ```
-run-radiopadre -V .
+run-radiopadre -V --auto-init .
 ```
-
-the first time this may take a long time since other installations and setups must happen    
-once started look out for the following information
-* carta
+On remote/local system
 ```
-radiopadre.client: $ /usr/bin/carta --remote --root=/home/ruby/OH_masers --folder=/home/ruby/OH_masers --port=1028 --fport=1027
-```
-* jupyter notebooks
-```
---NotebookApp.token='3cb92a77ddf14211a06468ba3e40b4c6'
-[I 15:25:25.382 NotebookApp] http://localhost:1024/?token=...
+run-radiopadre -V com14.science.kat.ac.za: --auto-init
 ```
 
+This should install the server side software as well as spin up the first notebook and carta instances
+and open browser tabs if a browser is available.
+
+### debug/verification
 you can see the system is listening on the relevant ports
 ```
 ss -tpl
@@ -187,65 +194,19 @@ The number of ports should decrease as the resources are released
 ss -a | grep TIME- | wc -l
 ```
 
-### exit venv
-```
-deactivate
-```
-
----
-
-# Usage
-
-
-## TMUX session
-### start tmux session
-```
-tmux new -s radiopadre
-```
-### attach to tmux session
-```
-tmux a -t radiopadre
-```
-### activate python virtual
-```
-source venv3.7/bin/activate
-```
-
-## Radiopadre
-### start server
+## Usage
+On server
 ```
 run-radiopadre -V .
 ```
-### note ports and tokes
-* carta
+On remote/local system
 ```
-/usr/bin/carta --remote --root=/home/ruby/OH_masers --folder=/home/ruby/OH_masers --port=1028 --fport=1027
-```
-* jupyter notebooks
-```
---NotebookApp.token='66523c4525ad46b987f366d83b02e0fa'
---NotebookApp.custom_display_url='http://localhost:1024'
+run-radiopadre -V com14.science.kat.ac.za:
 ```
 
-## Browser & ssh
-Running the radiopadre software on the server and viewing it from your local system means you need to
-do some port forwarding for jupyter notebooks
-```
-ssh -XY -L 5050:localhost:1024 com14
-```
-View the output notebooks with jupyter notebooks
-```
-http://localhost:5050
-```
-View the fits images with Carta
-```
-http://com14.science.kat.ac.za:1027/?socketUrl=ws://com14.science.kat.ac.za:1028
-```
-
----
-
-# Notes
-### forward all ports [optional]
+### Notes
+If you have radiopadre running on the server side, but want to view it on a local system, use port
+forwarding
 ```
 ssh -XY -L 5050:localhost:1024 -L 5051:localhost:1027 -L 5052:localhost:1028 com14
 ```
@@ -254,9 +215,12 @@ http://localhost:5050/tree?#notebooks
 http://localhost:5052/?socketUrl=ws://localhost:5051
 ```
 
-### uninstall
+---
+
+# Uninstall
+```
 pip uninstall radiopadre-client
 pip uninstall radiopadre
-
+```
 
 -fin-
