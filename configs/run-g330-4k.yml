@@ -23,7 +23,6 @@ transform__calibrators:
   split_field:
     enable: true
     col: data
-
 prep__calibrators:
   enable: true
   label_in: cal
@@ -34,7 +33,6 @@ prep__calibrators:
   specweights:
     enable: true
     mode: uniform
-
 flag__calibrators:
   enable: true
   label_in: cal
@@ -46,13 +44,13 @@ flag__calibrators:
   flag_spw:
     enable: true
     # flagging out RFI channels from TM memo
+    # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
     ensure_valid: false
   flag_mask:
     enable: true
     mask: meerkat.rfimask.npy
     uvrange: '0~1000'
-
 flag__cal_rfi:
   enable: true
   label_in: cal
@@ -62,20 +60,23 @@ flag__cal_rfi:
     flagger: tricolour
     tricolour:
       strategy: khruschev.yaml
-
 flag__cal_manual:
   enable: true
   label_in: cal
   field: calibrators
   flag_spw:
     enable: true
-    chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.30354GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
+#     chans: '*:0.965299GHz~0.965717GHz,*:1.05161GHz~1.05245GHz,*:1.1026GHz~1.10344GHz,*:1.1118GHz~1.11221GHz,*:1.10887GHz~1.11598GHz,*:1.12768GHz~1.12831GHz,*:1.13583GHz~1.13834GHz,*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.3045GHz,*:1.48964GHz~1.49298GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
+    chans: '*:0.965290GHz~0.965930GHz,*:1.05161GHz~1.05245GHz,*:1.1026GHz~1.10344GHz,*:1.10887GHz~1.11598GHz,*:1.12768GHz~1.12831GHz,*:1.13583GHz~1.13834GHz,*:1.1421GHz~1.16595GHz,*:1.1862GHz~1.3045GHz,*:1.48964GHz~1.49298GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
     ensure_valid: false
   flag_time:
     enable: true
-    timerange: '2021/07/05/16:17:30~2021/07/05/16:18:51'
+    timerange: '2021/07/05/16:17:30~2021/07/05/16:19:30,2021/07/05/16:27:00~2021/07/05/16:27:15'
     ensure_valid: false
-
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
 crosscal:
   enable: true
   label_in: cal
@@ -83,8 +84,9 @@ crosscal:
   uvrange: '>150'
   set_model:
     enable: true
-    meerkat_skymodel: false
-#     meerkat_skymodel: true
+    # error in 1934 model for this caracal installation, using meqtree model
+#     meerkat_skymodel: false
+    meerkat_skymodel: true
   primary:
     reuse_existing_gains: true
     order: KGBAKGB
@@ -94,27 +96,33 @@ crosscal:
     calmode: [ap, ap, ap, null, ap, ap, ap]
     b_fillgaps: 70
     plotgains: true
+#   secondary:
+#   # Don't do the I option, rather image the calibrators
+#     reuse_existing_gains: true
+#     order: KGAKFI
+#     apply: B
+#     combine: ["scan,field", "spw", null, "", "", null]
+#     solint: [inf, inf, null, 60s, 60s, null]
+#     calmode: [ap, ap, null, ap, ap, null]
+#     plotgains: true
+#     image:
+#       npix: 10000
+#       cell: 0.8
+#       niter: 100000
+#       nchans: 8
   secondary:
     reuse_existing_gains: true
-    order: KGAKFI
+    order: KGAKF
     apply: B
-#     combine: ["", "", null, "", "", null]
-    combine: ["scan,field", "spw", null, "", "", null]
-    solint: [inf, inf, null, 60s, 60s, null]
-#     calmode: [a, ap, null, a, ap] 
-    calmode: [ap, ap, null, ap, ap, null]
+    combine: ["scan,field", "spw", null, "", ""]
+    solint: [inf, inf, null, 60s, 60s]
+    calmode: [ap, ap, null, ap, ap]
     plotgains: true
-    image:
-      npix: 10000
-      cell: 0.8
-      niter: 100000
-      nchans: 8
   apply_cal:
     applyto:
       - fcal
       - bpcal
       - gcal
-
 inspect:
   enable: true
   label_in: cal
@@ -230,7 +238,10 @@ flag__target:
   flag_spw:
     enable: true
     # flagging out RFI channels from TM memo
-    chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
+    # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
+    # rather inspect and flag those regions manually
+#     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
+    chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz'
     ensure_valid: false
   flag_mask:
     enable: true
@@ -246,7 +257,11 @@ flag__tgt_manual:
   field: target
   flag_spw:
     enable: true
-    chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.30354GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
+    chans: '*:0.965299GHz~0.965717GHz,*:1.05161GHz~1.05245GHz,*:1.1026GHz~1.10344GHz,*:1.10887GHz~1.11598GHz,*:1.12768GHz~1.12831GHz,*:1.13583GHz~1.13834GHz,*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.3045GHz,*:1.48964GHz~1.49298GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
+    ensure_valid: false
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
     ensure_valid: false
 
 flag__tgt_rfi:
@@ -262,39 +277,5 @@ flag__tgt_rfi:
 mask:
   enable: false
 
-selfcal:
-  enable: true
-  img_npix: 10000
-  img_cell: 0.8
-  img_nchans: 8
-  img_multiscale: false
-  img_niter: 100000
-  img_specfit_nrcoeff: 4
-  cal_timeslots_chunk: 12
-  image:
-    enable: true
-  calibrate:
-    enable: true
-    gsols_timeslots: [4]
-    gsols_chan: [256]
-    gain_matrix_type: [GainDiagPhase, GainDiagPhase]
-  cal_cubical:
-    dist_max_chunks: 12
-  transfer_model:
-    enable: false
-
-ddcal:
-  enable: false
-  label_in: corr
-  use_pb: true
-  calibrate_dd:
-    enable: True
-    de_sources_mode: manual
-  copy_data:
-    enable: true
-  image_wsclean:
-    enable: true
-  transfer_model_dd:
-    enable: true
 
 # -fin-
