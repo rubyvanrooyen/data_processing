@@ -1,6 +1,9 @@
 ## Data and tables
-Test data for G330 was created by extracting the calibrator observations and using them to
-build comparison reports between CASA and caracal processing
+Some processing and viewing of data being processed are still done using CASA for testing and
+validation as well as to fill in gaps where CARACAL is still being developed.
+
+This folder contains most of the symbolic links and output products for G330 commissioning processing.
+G330 is used to build comparison reports between CASA and caracal processing
 
 
 ## CASA on com14 using singularity
