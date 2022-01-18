@@ -1,0 +1,335 @@
+# This script describes MeerKAT data reduction using CARACAL to read, flag, calibrate, continuum
+# subtract, and image the data.
+# Plotting for datasets with ShameMS and viewing with radio padre
+# This is a pipeline script and designed to be executed an a full config
+# or selected workers
+
+schema_version: 1.0.4
+
+
+## Generate MS for calibration
+general:
+  prefix: G330_OHline
+  title: G330_OHline
+  msdir: msdir
+  rawdatadir: ms-orig
+  output: output-g330zoom-32k
+
+getdata:
+  dataid: [1625501782_sdp_l0]
+  extension: ms
+
+obsconf:
+  refant: auto
+
+
+## Processing calibrators
+## Narrow band zoom modes channelise the 32768 channels
+## For calibration average down to the wideband 4096 channels
+## Factor 8 averaging if all channels are available
+transform__calibrators:
+  enable: true
+  label_out: cal
+  field: calibrators
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: data
+prep__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+## Initial inspection and flagging
+## Make an inital amplitude vs. channel plot of the bandpass calibrator averaging all the data
+## together in time.
+## Next plot phase vs. channel.
+## Now plot amplitude and phase as a function of time.
+## 0a. Flag out band edges
+## 0b. Automated flagging for shadowing, elevation and extreme outliers
+## 0c. Flagging of identified bad data
+## Check that bad data is gone
+flag__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    # these modes will prob be used for spectral lines, and flagged manually
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+
+flag__cal_manual:
+  enable: true
+  label_in: cal
+  field: calibrators
+  # time and antenna flags from WB processing is carried over
+  # freq/ channel based flagging are done independently after inspecting the NB data
+  flag_time:
+    enable: true
+    timerange: '2021/07/05/16:17:30~2021/07/05/16:19:30,2021/07/05/16:27:00~2021/07/05/16:27:15'
+    ensure_valid: false
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
+
+crosscal:
+  enable: true
+  label_in: cal
+  label_cal: 1gc
+  uvrange: '>150'
+  set_model:
+    enable: true
+    # error in 1934 model for this caracal installation, using meqtree model
+#     meerkat_skymodel: false
+    meerkat_skymodel: true
+  primary:
+    reuse_existing_gains: true
+    # Start with an initial phase only solution for bpcal to take out major phase variations with time.
+    # For maximum sensitivity we average all the spw together with the exception of spws which show
+    # large phase offsets from the other spw in phase vs. channel.
+    # A regular 'B' type solution can work well if you have lots of S/N on your bandpass
+    # calibrator. You may wish to make this table # (uncomment commands below) and compare to 'BPOLY'
+    # solution further down.
+    # A polynomial solution is more sensitive than simply fitting a polynomial to the channel based
+    # solutions 'B' after the fact. For the mm/submm where the S/N is often low on the bandpass
+    # calibrator 'BPOLY' is often the best choice, but every dataset is different. You may
+    # especially need to play with degamp and degphase. The combine='scan' is needed to average
+    # together the bpcal scans.  The spwmap=[0] is telling it to apply the phase solution that was
+    # found from the average of all spw to each spw before determining the bandpass solution.
+    # The next step is to apply the bandpass solution while re-calculating the phase only solution for
+    # bpcal on a short (integration time) time interval, but now including all spw since antenna based
+    # solutions will have taken out phase vs.spw differences).
+    # To avoid decorrelation of the amplitude, the phase solutions fed to the amplitude calibration
+    # step should be at the shortest solint your S/N can support, typically the integration time.
+    # Unless you chose to do some more sophisticated smoothing, the phase solutions applied to your
+    # target might as well be on the scan time of your phase calibrator(s).
+    # Without combine='scan', the solution will not cross scan boundaries even though solint='inf'.
+    # This is an easy way to "manually" interpolate.
+    order: KGBAKGB
+#     combine: ["", "", "", null, "", "", ""]
+    combine: ["scan,field", "spw", "scan,field", null, "", "", "scan"]
+    solint: [inf, inf, inf, null, int, int, inf]
+    calmode: [ap, ap, ap, null, ap, ap, ap]
+    b_fillgaps: 70
+    plotgains: true
+  secondary:
+    reuse_existing_gains: true
+    # Next we apply the antenna based bandpass, and phase only solution to solve for amplitude
+    # solutions over a longer solint (to increase S/N).
+    # The spwmap=[[0],[]] tells it that the pcal solution is independent of spw while the bpoly
+    # solution is per spw, spwmap order must be in the same order as the tables in gaintable.
+    # Derive absolute flux calibration (based on setjy above)
+    order: KGAKF
+    apply: B
+    combine: ["scan,field", "spw", null, "", ""]
+    solint: [inf, inf, null, 60s, 60s]
+    calmode: [ap, ap, null, ap, ap]
+    plotgains: true
+  apply_cal:
+  # Although in previous steps solutions were applied "on-the-fly", the data were not actually
+  # changed. Running applycal will fill the corrected data column in the ms. Again be careful with
+  # specification of gaintable, and keeping the same order in spwmap and gainfield.
+    applyto:
+      - fcal
+      - bpcal
+      - gcal
+
+# inspect:
+#   enable: true
+#   label_in: cal
+#   field: calibrators
+#   label_plot: 'plot_1gc'
+#   dirname: crosscal
+#   correlation: all
+#   standard_plotter: none
+#   shadems:
+#     enable: true
+#     default_column: CORRECTED_DATA
+#     plots:
+#       - desc: "plots by field"
+#         field: "{all_fields}"
+#         cnum: 100  # up 100 colours
+#         iter_field: true
+#         plots:
+#           # phaseball plots
+#           - dir: "phaseballs-{msbase}"
+#             plots:
+#               - "-x real -y imag -c CORR --corr IQUV --hline 0: --vline 0:"
+#               - "-x real -y imag -c SCAN_NUMBER"
+#               - "-x real -y imag -c ANTENNA1"
+#           - dir: "phaseballs-bycorr-{msbase}"
+#             iter_corr:
+#             plots:
+#               - "-x real -y imag -c SCAN_NUMBER"
+#               - "-x real -y imag -c ANTENNA1"
+#           # normalized phaseballs
+#           - dir: "normballs-{msbase}"
+#             col: "CORRECTED_DATA/MODEL_DATA"
+#             corr: "XX,YY"
+#             iter_corr:
+#             plots:
+#               - "-x real -y imag -c SCAN_NUMBER"
+#               - "-x real -y imag -c ANTENNA1"
+#           # block and triangle plots
+#           - dir: "blockplots-{msbase}"
+#             plots:
+#               - "-x BASELINE_M -y FREQ -c amp"
+#               - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis phase --ared std"
+#               - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis amp --ared mean"
+#           # amp/phase versus uv-distance, and uv-coverage coloured by amp/phase
+#           - dir: "uvdist-{msbase}"
+#             plots:
+#               - "-x UV -y amp    -c SCAN_NUMBER"
+#               - "-x UV -y amp    -c ANTENNA1"
+#               - "-x UV -y phase  -c ANTENNA1 --corr XX,YY"
+#               - "-x U  -y V      -c amp"
+#               - "-x U  -y V      -c phase --cmin -5 --cmax 5"
+#           # spectral plots
+#           - dir: "spectra-{msbase}"
+#             plots:
+#               - "-x FREQ  -y amp  -c SCAN_NUMBER"
+#               - "-x FREQ  -y amp  -c ANTENNA1"
+#               - "-x FREQ  -y real -c CORR --corr IQUV --hline 0:"
+#       # per-antenna plots
+#       - iter_ant:
+#         desc: "plots by antenna"
+#         cmap: pride
+#         corr: XX,YY
+#         plots:
+#           - '-x FREQ -y amp:I -c SCAN_NUMBER --cnum 100 --cmin 0 --cmax 30 --field {bpcal} --dir bpcal-iamp-byant-{msbase}'
+#           - '-x FREQ -y SCAN_NUMBER -a amp --ared std --dir stdamp-byant-{msbase}'
+#           - '-x FREQ -y SCAN_NUMBER -a phase --ared std --dir stdphase-byant-{msbase}'
+#       # per-scan plots
+#       - iter_scan:
+#         desc: "plots by scan"
+#         cmap: pride
+#         ared: std
+#         corr: XX,YY
+#         plots:
+#           - '-x ANTENNA1 -y ANTENNA2 -a amp --dir stdamp-byscan-{msbase}'
+#           - '-x ANTENNA1 -y ANTENNA2 -a phase --dir stdphase-byscan-{msbase}'
+#           - '-x BASELINE_M -y FREQ -a imag --amin 0 --amax 2 --dir stdimag-byscan-{msbase}'
+#     ignore_errors: true
+
+
+## Continuum subtraction and spectral line analysis
+transform__target:
+  enable: true
+  label_out: corr
+  field: target
+  split_field:
+    enable: true
+    otfcal:
+      enable: true
+      label_cal: 1gc
+      interpolation:
+        delay_cal: nearest
+        bp_cal: nearest
+        gain_cal: linear
+prep__target:
+  enable: true
+  label_in: corr
+  field: target
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__target:
+  enable: true
+  label_in: corr
+  field: target
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
+    # rather inspect and flag those regions manually
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+
+flag__tgt_manual:
+  enable: true
+  label_in: corr
+  field: target
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
+
+# mask:
+#   enable: false
+# 
+# # selfcal:
+# #   enable: true
+# #   label: corr
+# #   ncpu: 40
+# #   img_npix: 3600
+# #   img_cell: 2
+# #   img_niter: 1000000
+# #   img_nchans: 12
+# #   cal_niter: 4
+# #   image:
+# #     enable: true
+# #     auto_mask: [20,15,10,5,5]
+# #     auto_threshold: [0.5,0.5,0.5,0.3,0.3]
+# #   calibrate:
+# #     enable: true
+# #     model: ['1','2','3','4']
+# #     gain_matrix_type: ['GainDiagPhase', 'GainDiagPhase', 'GainDiagPhase', 'GainDiag']
+# #     gsols_chan: ['0', '0', '0', '100']
+# #     gsols_timeslots: ['120', '120', '60', '60']
+# #     shared_memory: 250GB
+# #   transfer_apply_gains:
+# #     enable: true
+# #     transfer_to_label: corr
+# #   transfer_model:
+# #     enable: true
+# #     num_workers: 40
+# #     memory_fraction: 0.45
+# #     transfer_to_label: corr
+# #
+# # image_line:
+# #   enable: true
+# #   label: 'l'
+# #   restfreq: '1.420405752GHz'
+# #   subtractmodelcol:
+# #     enable: true
+# #   make_cube:
+# #     enable: true
+# #     npix: [1800]
+# #     cell: 3
+# #     taper: 10
+# #     robust: 0
+# #   mstransform: 
+# #     enable: true
+# #     telescope: meerkat
+# #     fitorder: 1
+# # #    fitspw: '*:1300~1417.2MHz,*:1421.0~1600MHz'
+# #   pb_cube:
+# #     enable: true
+# #   freq_to_vel:
+# #     enable: false
+# #   remove_stokes_axis:
+# #     enable: true
+# #   sofia:
+# #     enable: true
+
+# -fin-
