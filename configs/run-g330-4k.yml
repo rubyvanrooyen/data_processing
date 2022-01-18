@@ -1,5 +1,7 @@
 schema_version: 1.0.4
 
+
+## Generate MS for calibration
 general:
   prefix: G330
   title: G330
@@ -51,15 +53,6 @@ flag__calibrators:
     enable: true
     mask: meerkat.rfimask.npy
     uvrange: '0~1000'
-flag__cal_rfi:
-  enable: true
-  label_in: cal
-  field: calibrators
-  flag_rfi:
-    enable: true
-    flagger: tricolour
-    tricolour:
-      strategy: khruschev.yaml
 flag__cal_manual:
   enable: true
   label_in: cal
@@ -77,6 +70,16 @@ flag__cal_manual:
     enable: true
     antennas: 'm054'
     ensure_valid: false
+flag__cal_rfi:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_rfi:
+    enable: true
+    flagger: tricolour
+    tricolour:
+      strategy: khruschev.yaml
+
 crosscal:
   enable: true
   label_in: cal
@@ -123,6 +126,7 @@ crosscal:
       - fcal
       - bpcal
       - gcal
+
 inspect:
   enable: true
   label_in: cal
@@ -202,6 +206,9 @@ inspect:
 
 
 ## Imaging wideband target
+## Prior to imaging, calibrated visibilities are
+## averaged by 4 channels in frequency and
+## to 8 second integration time.
 transform__target:
   enable: true
   label_out: corr
@@ -214,8 +221,8 @@ transform__target:
       label_cal: 1gc
       interpolation:
         delay_cal: nearest
+        bp_cal: nearest
         gain_cal: linear
-
 prep__target:
   enable: true
   label_in: corr
@@ -243,10 +250,10 @@ flag__target:
 #     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz'
     ensure_valid: false
-  flag_mask:
-    enable: true
-    mask: meerkat.rfimask.npy
-    uvrange: '0~1000'
+#   flag_mask:
+#     enable: true
+#     mask: meerkat.rfimask.npy
+#     uvrange: '0~1000'
   inspect:
     enable: false
     field: target
