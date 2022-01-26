@@ -86,13 +86,13 @@ crosscal:
   label_cal: 1gc
   uvrange: '>150'
   set_model:
-#     # Option 0: using external fluxdensity coefficients
-#     # setjy(vis=msfile, field="J0408-6545", standard="manual", fluxdensity=[14.63998927 -1.2062332 -0.3355415 -0.44181133], reffreq="1.400000GHz")
-#     enable: false
-#     meerkat_skymodel: false
-    # Option 1: apparently there is a test model for 0408, we will try that
-    enable: true
-    meerkat_skymodel: true
+    # Option 0: using external fluxdensity coefficients
+    # setjy(vis=msfile, field="J0408-6545", standard="manual", fluxdensity=[14.63998927 -1.2062332 -0.3355415 -0.44181133], reffreq="1.400000GHz")
+    enable: false
+    meerkat_skymodel: false
+#     # Option 1: apparently there is a test model for 0408, we will try that
+#     enable: true
+#     meerkat_skymodel: true
   primary:
     reuse_existing_gains: true
     order: KGBAKGB

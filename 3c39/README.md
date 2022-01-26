@@ -40,10 +40,17 @@ Targets: 3 selected out of 3 in catalogue
 ## make measurement read only to prevent CASA from corrupting the MS
 `chmod -w 1627186156_sdp_l0.ms/`
 
+
+# Data procssing
+Use both CARACAL and some CASA intermittendly
+
 ## add sym link to ms
 `ln -s /scratch/ruby/data_processing/rawdata/3c39/data/ ms-orig`
 
 ## run caracal pipeline
 `caracal -c run-3c39-4k.yml`
+
+## view results and set model using CASA
+`casa --log2term`
 
 -fin-
