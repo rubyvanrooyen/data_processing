@@ -1,33 +1,54 @@
+## Standard required input workers (always include in all yaml configs)
+
 schema_version: 1.0.4
 
 
 ## Generate MS for calibration
+# Compulsory worker to set up data/input/output directories.
+# The prefix used for the output data products (e.g., diagnostic plots, images, etc.).
 general:
   prefix: G330
   title: G330
+  # Location where CARACal will write and expect to find .MS files
   msdir: msdir
+  # This directory and the input .MS files within it can be read-only
   rawdatadir: ms-orig
   output: output-g330wide-4k
+#   cabs:
+#     - name: shadems_direct
+#       tag: 1.7.1
 
+# Compulsory worker to specify the input .MS files.
 getdata:
   dataid: [1625501775_sdp_l0]
   extension: ms
 
+# Compulsory worker to set up target/calibrators names.
 obsconf:
   refant: auto
 
 
 ## Processing calibrators
+# Split calibrators-only .MS files, one per input .MS file.
+# This worker splits the calibrators (in preparation for cross-calibration) or the targets (in
+# preparation for imaging) to new .MS files. Time and frequency averaging is available, as well as
+# phase rotation to a new phase centre. Crosscalibration can be applied on the fly while splitting.
 transform__calibrators:
   enable: true
+#   label_out: &cal_label cal
   label_out: cal
+#   field: &calibs calibrators
   field: calibrators
   split_field:
     enable: true
     col: data
+
+# Prepare the calibrators-only .MS files for processing.
 prep__calibrators:
   enable: true
+#   label_in: *cal_label
   label_in: cal
+#   field: *calibs
   field: calibrators
   fixuvw:
     enable: true
@@ -35,27 +56,38 @@ prep__calibrators:
   specweights:
     enable: true
     mode: uniform
+
+# Flag the calibrators-only .MS files.
 flag__calibrators:
   enable: true
+#   label_in: *cal_label
   label_in: cal
+#   field: *calibs
   field: calibrators
   flag_autocorr:
     enable: true
   flag_shadow:
     enable: true
+#   flag_spw: &lband_rfi
   flag_spw:
     enable: true
     # flagging out RFI channels from TM memo
+    # chans: '*:856~940MHz, *:1180~1300MHz, *:1658~1800MHz, *:1419.8~1421.3MHz'
     # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
     ensure_valid: false
+#   flag_mask: &lband_rfimask
   flag_mask:
     enable: true
     mask: meerkat.rfimask.npy
     uvrange: '0~1000'
+
+# Flag bad data identified manually
 flag__cal_manual:
   enable: true
+#   label_in: *cal_label
   label_in: cal
+#   field: *calibs
   field: calibrators
   flag_spw:
     enable: true
@@ -70,19 +102,34 @@ flag__cal_manual:
     enable: true
     antennas: 'm054'
     ensure_valid: false
+#   flag_manual:
+#     enable: true
+#     rules:
+#     - *1775 antenna:m00x
+#     - 1557* scan:49
+#     - 1568* antenna:m024;m036
+
+# Flag RFI using AOFlagger, Tricolour, or CASA FLAGDATA with tfcrop.
 flag__cal_rfi:
   enable: true
+#   label_in: *cal_label
   label_in: cal
+#   field: *calibs
   field: calibrators
+#   flag_rfi: &flag_rfi
   flag_rfi:
     enable: true
     flagger: tricolour
     tricolour:
       strategy: khruschev.yaml
 
+# Derive the cross-calibration tables and apply them to the calibrators.
+# Carry out Cross calibration of the data (delay, bandpass and gain calibration).
 crosscal:
   enable: true
+#   label_in: *cal_label
   label_in: cal
+#   label_cal: &gc1_label 1gc
   label_cal: 1gc
   uvrange: '>150'
   set_model:
@@ -126,10 +173,16 @@ crosscal:
       - fcal
       - bpcal
       - gcal
+#      - xcal
 
+# This worker plot the visibilities for diagnostic purpose. 
+# Inspect the calibrated calibrator’s visibilities to check the quality of the
+# cross-calibration.
 inspect:
   enable: true
+#   label_in: *cal_label
   label_in: cal
+#   field: *calibs
   field: calibrators
   label_plot: 'plot_1gc'
   dirname: crosscal
@@ -206,26 +259,35 @@ inspect:
 
 
 ## Imaging wideband target
-## Prior to imaging, calibrated visibilities are
-## averaged by 4 channels in frequency and
-## to 8 second integration time.
+# Split target-only .MS files, one per input .MS file and target, applying the
+# cross-calibration on the fly.
 transform__target:
   enable: true
+#   label_out: &tgt_label corr
   label_out: corr
+#   field: &tgt_sources target
   field: target
   split_field:
     enable: true
+    # Prior to imaging, calibrated visibilities are averaged by 4 channels in frequency and to 8 second integration time.
     chan_avg: 4
     otfcal:
       enable: true
+#       label_cal: *gc1_label
       label_cal: 1gc
       interpolation:
         delay_cal: nearest
         bp_cal: nearest
         gain_cal: linear
+#      derotate_pa: false
+#      output_pcal_ms: intermediate
+
+# Prepare the target-only .MS files for processing.
 prep__target:
   enable: true
+#   label_in: *tgt_label
   label_in: corr
+#   field: *tgt_sources
   field: target
   fixuvw:
     enable: true
@@ -234,26 +296,39 @@ prep__target:
     enable: true
     mode: uniform
 
+# Flag the target-only .MS files.
 flag__target:
   enable: true
+#   label_in: *tgt_label
   label_in: corr
+#   field: *tgt_sources
   field: target
   flag_autocorr:
     enable: true
   flag_shadow:
     enable: true
+#   flag_spw: *lband_rfi
   flag_spw:
     enable: true
     # flagging out RFI channels from TM memo
     # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
     # rather inspect and flag those regions manually
+#     chans: '*:856~880MHz , *:1658~1800MHz, *:1419.8~1421.3MHz'
 #     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
     chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz'
     ensure_valid: false
+    # Not auto-rfi flagging, rather do it manually to flag out the lines for continuum
+# #   flag_mask: *lband_rfimask
 #   flag_mask:
 #     enable: true
 #     mask: meerkat.rfimask.npy
 #     uvrange: '0~1000'
+#   flag_manual:
+#     enable: true
+#     rules:
+#       - '1557* antenna:m007'
+#       - '1568* antenna:m024;m036'
+# #      - '1568* scan:35 uvrange:1000~9000'
   inspect:
     enable: false
     field: target
@@ -264,6 +339,7 @@ flag__tgt_manual:
   field: target
   flag_spw:
     enable: true
+#     chans: '*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.25997GHz,*:1.52057GHz~1.59185GHz,*:1.51827GHz,*:1.62632GHz'
     chans: '*:0.965299GHz~0.965717GHz,*:1.05161GHz~1.05245GHz,*:1.1026GHz~1.10344GHz,*:1.10887GHz~1.11598GHz,*:1.12768GHz~1.12831GHz,*:1.13583GHz~1.13834GHz,*:1.1421GHz~1.16592GHz,*:1.1862GHz~1.3045GHz,*:1.48964GHz~1.49298GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
     ensure_valid: false
   flag_antennas:
@@ -271,18 +347,63 @@ flag__tgt_manual:
     antennas: 'm054'
     ensure_valid: false
 
-flag__tgt_rfi:
-  enable: true
-  field: target
-  label_in: corr
-  flag_rfi:
-    enable: true
-    flagger: tricolour
-    tricolour:
-      strategy: khruschev.yaml
+# flag__tgt_rfi:
+#   enable: true
+# #   field: *tgt_sources
+#   field: target
+# #   label_in: *tgt_label
+#   label_in: corr
+# #   flag_rfi: *flag_rfi
+#   flag_rfi:
+#     enable: true
+#     flagger: tricolour
+#     tricolour:
+#       strategy: khruschev.yaml
 
+# This worker creates an a-priori clean mask based on NVSS or SUMSS, to be used during the continuum
+# imaging/self-calibration loop.
 mask:
   enable: false
 
+# This worker performs continuum imaging and standard (i.e., direction-independent) self-calibration.
+# Make a continuum image of each target, self-calibrate, and transfer both gains
+# and continuum model to the full-frequency-resolution target-only .MS files.
+selfcal:
+  enable: true
+  label_in: corr
+  img_npix: 10000
+  img_cell: 0.8
+  img_nchans: 8
+  img_multiscale: false
+  img_niter: 100000
+  img_specfit_nrcoeff: 4
+  cal_timeslots_chunk: 12
+  image:
+    enable: true
+  calibrate:
+    enable: true
+    gsols_timeslots: [4]
+    gsols_chan: [256]
+    gain_matrix_type: [GainDiagPhase, GainDiagPhase]
+  cal_cubical:
+    dist_max_chunks: 12
+  transfer_model:
+    enable: false
+
+# # Perform direction-dependent calibration on the data
+# ddcal:
+#   enable: false
+# #   label_in: *tgt_label
+#   label_in: corr
+#   use_pb: true
+#   calibrate_dd:
+#     enable: True
+#     de_sources_mode: manual
+#   copy_data:
+#     enable: true
+#   image_wsclean:
+#     enable: true
+#   transfer_model_dd:
+#     enable: true
 
 # -fin-
