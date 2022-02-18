@@ -1,6 +1,18 @@
 Example configs for reference:
 * wideband_pipeline.yml
 
+Wideband processing steps:
+* create caracal config with pipeline workers
+* run on calibrators with standard flagging and calibration
+* inspect data and update config with additional flagging / refined calibration strategy
+* re-run with calibration and include application of calibration solutions and standard flagging to target
+* inspect target data and update target flagging workers to include additional manual flags
+* re-run workers applying calibration solution and flagging to target and include selfcal imaging runs
+* imaging of calibrated target dataset 
+
+Refined calibration strategies:
+* Using setjy to fill in model column externally before running caracal pipeline
+
 Processing strategy:
 * Caracal pipelines function well to flag and calibrate large MS datasets.
   * Flagging and calculating antenna based calibration results for calibrator sources    

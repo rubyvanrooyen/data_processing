@@ -52,10 +52,10 @@ deactivate
 ## Extraction
 Get data from archive    
 Using screen/tmux session
-`tmux new -s g330` or
+`tmux new -s 3c39` or
 ```
 tmux ls
-tmux a -t g330
+tmux a -t 3c39
 ```
 ### activate python virtual
 ```
