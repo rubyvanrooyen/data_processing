@@ -365,28 +365,48 @@ flag__tgt_manual:
 mask:
   enable: false
 
+## Iteratively image the radio continuum emission and self-calibrate the visibilities
 # This worker performs continuum imaging and standard (i.e., direction-independent) self-calibration.
 # Make a continuum image of each target, self-calibrate, and transfer both gains
 # and continuum model to the full-frequency-resolution target-only .MS files.
 selfcal:
   enable: true
+  # label of the MS file to process
   label_in: corr
+  # nr of pixels in ouput image
   img_npix: 10000
+  # image pixel size
   img_cell: 0.8
+  # nr channels in output image
   img_nchans: 8
+  # join channels to create MFS image
+  img_joinchans: true
+  # switch off multi-scale cleaning
   img_multiscale: false
+  # nr of cleaning iterations
   img_niter: 100000
+  # nr of spectral polynomial terms to fit each clean component
   img_specfit_nrcoeff: 4
+  # chunk data up by this nr of timeslots
+  # (limits the amount of data processed at once)
   cal_timeslots_chunk: 12
+  # imaging parameters
   image:
     enable: true
+  # calibration parameters
+  calibrate_with: cubical
   calibrate:
     enable: true
+    # G-Jones time solution interval
     gsols_timeslots: [4]
+    # G-Jones frequency solutions
     gsols_chan: [256]
+    # Phase only calibration
     gain_matrix_type: [GainDiagPhase, GainDiagPhase]
+  # parameters that only apply when using CubiCal for calibration
   cal_cubical:
     dist_max_chunks: 12
+  # transfer the model from the last WSClean imaging run to the MODEL_DATA column of the next MS
   transfer_model:
     enable: false
 
