@@ -10,4 +10,14 @@ clobber: clean
 	rm -rf  output*
 	rm -rf *.ipynb
 
+cleanpadre:
+	rm -f radiopadre-default.ipynb
+	rm -rf .radiopadre*
+	rm -rf radiopadre
+	rm -rf radiopadre-client
+
+clobberpadre: cleanpadre
+	rm -rf  .jupyter
+	rm -rf  .carta
+
 # -fin-
