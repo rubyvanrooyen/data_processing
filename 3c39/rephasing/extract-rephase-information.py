@@ -11,7 +11,7 @@ import pyrap.tables as pt
 import sys
 
 VERBOSE=True
-DEBUG=False
+DEBUG=True
 
 if len(sys.argv) < 2:
     msg = f'Usage: {sys.argv[0]} <filename.ms>'
@@ -114,7 +114,7 @@ for scan, idx, num in zip(scan_list, scan_idx, num_scans):
     t = ts.from_datetime(obs_time)
     apparent = meerkat.at(t).observe(comet).apparent()
     ra, dec, distance = apparent.radec()
-    ra, dec, distance = apparent.radec('date')
+#     ra, dec, distance = apparent.radec('date')
 
     ra_hms = ra.hms()
     ra_str = f'{int(ra_hms[0])}h{int(ra_hms[1])}m{ra_hms[2]:.3f}s'
