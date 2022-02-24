@@ -11,15 +11,14 @@ from skyfield.api import load, Topos
 from skyfield.constants import GM_SUN_Pitjeva_2005_km3_s2 as GM_SUN
 from skyfield.data import mpc
 
-VERBOSE=False
-DEBUG=False
+VERBOSE=True
+DEBUG=True
 
 
 if len(sys.argv) < 2:
     msg = f'Usage: {sys.argv[0]} <filename.ms>'
     raise SystemExit(msg)
 msfile=sys.argv[1]
-
 
 ## -- Read observational information from MS --
 with pt.table(msfile) as tb:
@@ -36,13 +35,7 @@ t = datetime(1858, 11, 17, 0, 0, tzinfo=timezone.utc)
 # MJD is -3506716800 than epoch
 if DEBUG: print(f'MJD is {t.timestamp()} than epoch')
 epoch=3506716800.
-
-def read_direction(dir_rad):
-    ra_rad = dir_rad[0]
-    dec_rad = dir_rad[1]
-    return SkyCoord(ra_rad*u.radian, dec_rad*u.radian, frame='icrs')
-
-## -- Read observational information from MS --
+# ## -- Read observational information from MS --
 
 
 ## -- Comet ephemeris from MeerKAT viewpoint -- 
@@ -60,7 +53,7 @@ eph = load('de421.bsp')
 sun, earth = eph['sun'], eph['earth']
 comet_name = '67P/Churyumov-Gerasimenko'
 ephem = comets.loc[comet_name]
-if VERBOSE:
+if DEBUG or VERBOSE:
     print(f'\n{comet_name} ephemeris')
     print(ephem)
 comet = sun + mpc.comet_orbit(ephem, ts, GM_SUN)
@@ -72,6 +65,12 @@ if DEBUG:
 meerkat = earth + Topos('30.7130 S', '21.4430 E')
 if DEBUG: print(meerkat)
 ## -- Comet ephemeris from MeerKAT viewpoint -- 
+
+
+def read_direction(dir_rad):
+    ra_rad = dir_rad[0]
+    dec_rad = dir_rad[1]
+    return SkyCoord(ra_rad*u.radian, dec_rad*u.radian, frame='icrs')
 
 
 # extract per scan information
