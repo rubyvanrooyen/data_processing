@@ -147,8 +147,8 @@ The easiest way to view these plots is using radiopadre
 
 ## Installation
 Installing radiopadre on a remote system to view caracal output on server
-See full description in Jira
-[SHAD-2](https://ruby-van-rooyen.atlassian.net/browse/SHAD-2)
+See full description in Gdoc
+[Radiopadre and Radiovangelize](https://docs.google.com/document/d/15JSJ78t9sVaDVfTFMpQuCwf1p73rDYbr7gPjnMOwdr8/edit?usp=sharing)
 
 ### activate python virtual
 On linux
@@ -161,7 +161,7 @@ pyenv local 3.7.10
 ```
 ### install radiopadre
 ```
-pip install git+https://github.com/ratt-ru/radiopadre-client.git@b1.2.x
+pip install git+https://github.com/ratt-ru/radiopadre-client.git@b1.2.pre2
 ```
 ### start server
 On server
