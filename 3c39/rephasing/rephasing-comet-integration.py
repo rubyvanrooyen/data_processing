@@ -19,6 +19,8 @@ if len(sys.argv) < 2:
     msg = f'Usage: {sys.argv[0]} <filename.ms>'
     raise SystemExit(msg)
 msfile=sys.argv[1]
+if DEBUG: print(msfile)
+
 
 ## -- Read observational information from MS --
 with pt.table(msfile) as tb:
@@ -73,6 +75,13 @@ def read_direction(dir_rad):
     return SkyCoord(ra_rad*u.radian, dec_rad*u.radian, frame='icrs')
 
 
+def deg2hms(degs_):
+    HH = int(degs_/15)
+    MM = int((degs_/15 - HH)*60)
+    SS = ((degs_/15 - HH)*60 - MM)*60
+    return f'{HH}h{MM}m{SS:.2f}s'
+
+
 # extract per scan information
 [scan_list, scan_idx, num_scans] = np.unique(scan_id, return_index=True, return_counts=True)
 
@@ -84,15 +93,18 @@ for scan, idx, num in zip(scan_list, scan_idx, num_scans):
     print(f'{starttime} to {endtime}\t {scan}\t {num}')
 
     dtime = (endtime-starttime).total_seconds()
-    obs_time = starttime+timedelta(seconds=dtime/2.)
+    obs_time = starttime + timedelta(seconds=dtime/2.)
+    obs_time = obs_time.replace(tzinfo=timezone.utc)
+    obs_ts = obs_time.timestamp()
+    new_scan_time = obs_ts + epoch# + interval[idx]/2.
     print(f'Calc comet phase center to time centroid {obs_time}')
 
     # how far does comet travel over scan time
-    obs_time = obs_time.replace(tzinfo=timezone.utc)
     t = ts.from_datetime(obs_time)
     apparent = meerkat.at(t).observe(comet).apparent()
     ra, dec, distance = apparent.radec()
     _67P_phase_center = SkyCoord(ra.hours*u.hour, dec.degrees*u.degree, frame='icrs')
+    print(f'Comet phase center @ obs time {obs_time} = {_67P_phase_center}')
     ra_hms = ra.hms()
     ra_str = f'{int(ra_hms[0])}h{int(ra_hms[1])}m{ra_hms[2]:.3f}s'
     dec_dms = dec.signed_dms()
@@ -100,22 +112,35 @@ for scan, idx, num in zip(scan_list, scan_idx, num_scans):
 
     print(f'Scan{str(scan).zfill(2)} @ obs time {obs_time}:\n\tComet phase center {_67P_phase_center} \n\t (ra, dec) = ({ra_str}, {dec_str})')
 
+    # inspecting current phase center set to occulation target 3C39
+    with pt.table(msfile+'/FIELD') as tb:
+        target_ = tb.getcol("NAME")[0]
+        # Phase center.
+        phase_ = tb.getcol("PHASE_DIR")[0][0]  # [rad]
+        phase_direction = read_direction(phase_)
+        print(f'Original phase center: ({str(phase_direction.ra)}, {str(phase_direction.dec)})')
+        obs_time_ = datetime.utcfromtimestamp(tb.getcol("TIME")[0]-epoch)
+        obs_time_ = obs_time_.replace(tzinfo=timezone.utc)
+        print(f'Original phase center on occulation target {target_} observed @ {obs_time_}: ({deg2hms(phase_direction.ra.degree)}, {str(phase_direction.dec)})')
 
     scan_str = f'Scan{str(scan).zfill(2)}'
     dt = t.utc_strftime(format="%Y-%b-%d %H:%M:%S")
     phasecenter = f'J2000 {ra_str} {dec_str}'
     print(f'Generate this input from MS: {scan_str}, {dt}, {phasecenter}')
-    with pt.table(msfile+'/FIELD') as tb:
-        # Phase center.
-        phase_ = tb.getcol("PHASE_DIR")[0][0]  # [rad]
-        phase_direction = read_direction(phase_)
-        print(f'Original phase center: ({str(phase_direction.ra)}, {str(phase_direction.dec)})')
     print('Rephasing phase center')
     os.system("chgcentre {} {} {}".format(msfile, ra_str, dec_str))
+    # rename target to comet
+    with pt.table(msfile+'/FIELD', readonly=False) as tb:
+        tb.putcol('NAME', "comet67P")
+        tb.putcol('TIME', new_scan_time)
+        tb.flush()
+
     with pt.table(msfile+'/FIELD') as tb:
+        target_ = tb.getcol("NAME")[0]
         # Phase center.
         phase_ = tb.getcol("PHASE_DIR")[0][0]  # [rad]
         phase_direction = read_direction(phase_)
-        print(f'Updated phase center: ({str(phase_direction.ra)}, {str(phase_direction.dec)})')
+        obs_time_ = datetime.utcfromtimestamp(tb.getcol("TIME")[0]-epoch)
+        print(f'Updated phase center on comet {target_} observed @ {obs_time_}: ({deg2hms(phase_direction.ra.degree)}, {str(phase_direction.dec)})')
 
 # -fin-
