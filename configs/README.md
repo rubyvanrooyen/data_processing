@@ -1,5 +1,5 @@
 Example configs for reference:
-* wideband_pipeline.yml
+* meerkat-54M-continuum.yml
 
 Wideband processing steps:
 * create caracal config with pipeline workers
