@@ -50,8 +50,9 @@ deactivate
 ```
 
 ## Extraction
-Get data from archive    
-Using screen/tmux session
+Get data from archive   
+It is suggested since we want to map the wideband results onto the narrow band data without too much effort, to ensure that we do the MS conversion of both datasets consistently 
+Using screen/tmux session, e.g.
 `tmux new -s 3c39` or
 ```
 tmux ls
@@ -110,7 +111,7 @@ deactivate
 ## Processing
 ### config file
 Construct the caracal pipeline config file (`<whatever>.yml`)    
-Example config: widepand_pipeline.yml
+Example configuration files in `configs` folder
 ### activate python virtual
 ```
 source venv3.7/bin/activate
