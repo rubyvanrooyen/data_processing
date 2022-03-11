@@ -1,0 +1,1 @@
+../comet-path-images.sh

@@ -1,4 +1,13 @@
+# Starting environment
+All software are installled in a python virtual environment:
+```
+cd data_processing/
+source venv3.7/bin/activate
+cd 3c39
+```
+
 # Get data for occultation source
+Raw data resides in: `/data_processing/rawdata/3c39`
 
 ## wideband data (4k)
 ```
@@ -13,7 +22,6 @@ mvftoms.py -f --flags cam https://archive-gw-1.kat.ac.za/1627186165/1627186165_s
 mNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjMyMTQzODM0LCJwcmVmaXgiOlsiMTYyNzE4NjE2NSJdLCJleHAiOjE2MzI3NDg2MzQsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.Zr3Jkpw9BDWCOm4D4qrDmWHHFku
 sxbBALwJP70oidzDtkzThQRXOZfUfqmOJb1oilzuUllWYr_Xj3UTvb1693g
 ```
-
 
 ## more examples
 ```
@@ -41,16 +49,26 @@ Targets: 3 selected out of 3 in catalogue
 `chmod -w 1627186156_sdp_l0.ms/`
 
 
-# Data procssing
+# Data processing
 Use both CARACAL and some CASA intermittendly
 
 ## add sym link to ms
-`ln -s /scratch/ruby/data_processing/rawdata/3c39/data/ ms-orig`
+`ln -s /scratch/ruby/data_processing/rawdata/3c39/ ms-orig`
 
 ## run caracal pipeline
-`caracal -c run-3c39-4k.yml`
+Since we do not yet have a convenient model for 0408, we will use (0)the Megtrees model and (1)setjy from casa
+(0) Using Megtrees model
+`caracal -c run-3c39-4k.yml`   
+and   
+`caracal -c run-3c39-32k.yml`
+
 
 ## view results and set model using CASA
 `casa --log2term`
+
+## drive documentation
+All development docs on Google Drive    
+[3C39](https://drive.google.com/drive/folders/1Va0DLJUfL873hb1zSmiOnHfDhXaU89wY)
+
 
 -fin-

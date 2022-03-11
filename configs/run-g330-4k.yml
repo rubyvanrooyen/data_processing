@@ -13,6 +13,7 @@ general:
   msdir: msdir
   # This directory and the input .MS files within it can be read-only
   rawdatadir: ms-orig
+  # Location where CARACal writes output products
   output: output-g330wide-4k
 #   cabs:
 #     - name: shadems_direct
