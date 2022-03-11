@@ -76,9 +76,27 @@ flag__calibrators:
     # these modes will prob be used for spectral lines, and flagged manually
     chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
     ensure_valid: false
-
+## may want want to auto flag the RFI in the calibrator data sets for good calibration results
 # Flag RFI using AOFlagger, Tricolour, or CASA FLAGDATA with tfcrop.
 # RFI flagging masks are not applied because you can flag out the lines
+#   flag_mask:
+#     enable: true
+#     mask: meerkat.rfimask.npy
+#     uvrange: '0~1000'
+# from old Josh configs
+#   flag_rfi:
+#     enable: true
+#     flagger: aoflagger
+#     fields: 'auto'
+# flag__cal_rfi:
+#   enable: true
+#   label_in: cal
+#   field: calibrators
+#   flag_rfi:
+#     enable: true
+#     flagger: tricolour
+#     tricolour:
+#       strategy: khruschev.yaml
 
 # Flag bad data identified manually
 flag__cal_manual:
@@ -158,7 +176,7 @@ crosscal:
       - bpcal
       - gcal
 
-# This worker plot the visibilities for diagnostic purpose. 
+# This worker plot the visibilities for diagnostic purpose.
 # Inspect the calibrated calibrator’s visibilities to check the quality of the
 # cross-calibration.
 inspect:
@@ -272,12 +290,14 @@ flag__target:
     enable: true
   flag_shadow:
     enable: true
-  flag_spw:
-    enable: true
-    # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
-    # rather inspect and flag those regions manually
-    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
-    ensure_valid: false
+#   flag_spw:
+#     enable: true
+#     # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
+#     # rather inspect and flag those regions manually
+#     chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+#     ensure_valid: false
+#don't apply rfi flagging to spectral data -- you can flag out your line
+#flag manually
 
 flag__tgt_manual:
   enable: true
