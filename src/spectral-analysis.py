@@ -94,8 +94,11 @@ def split_vlsr(restfreq,  # Hz
     # Set MS rest frequency
     freq_string=str(restfreq/1e6)+'MHz'
     split_outputvis = prefix + '-' + freq_string + '.ms'
+    # always remove tables before running command
+    # CASA will either through an error if it exist, or not do the updates
     if os.access(split_outputvis, F_OK):
-        os.system('rm -rf ' + split_outputvis)
+        rmtables(split_outputvis)
+#         os.system('rm -rf ' + split_outputvis)
     split(vis=msfile,
           outputvis=split_outputvis,
           datacolumn='all')
@@ -114,7 +117,8 @@ def split_vlsr(restfreq,  # Hz
     # regrid to another measurement frame and Doppler correction
     cvel_outputvis = prefix + '-' + freq_string + '.cvel.ms'
     if os.access(cvel_outputvis, F_OK):
-        os.system('rm -rf ' + cvel_outputvis)
+        rmtables(cvel_outputvis)
+#         os.system('rm -rf ' + cvel_outputvis)
     cvel(vis=split_outputvis,
          outputvis=cvel_outputvis,
          mode='velocity',
@@ -125,9 +129,10 @@ def split_vlsr(restfreq,  # Hz
     flagdata(vis=cvel_outputvis, mode='clip', clipminmax=[1e-5, 1000.0])
 
     # remove intermediate dataset
-    os.system('rm -rf ' + split_outputvis)
+#     os.system('rm -rf ' + split_outputvis)
+    rmtables(split_outputvis)
 
-    return cvel_outputvis
+    return cvel_outputvis, freq_string
 
 
 # Continuum subtraction
@@ -143,10 +148,12 @@ def cont_sub(msfile,
     # Make sure MS files that will be auto-generated are removed before cont subtraction
     cont_outputvis = msfile + '.cont'
     if os.access(cont_outputvis, F_OK):
-        os.system('rm -rf ' + cont_outputvis)
+        rmtables(cont_outputvis)
+#         os.system('rm -rf ' + cont_outputvis)
     contsub_outputvis = msfile + '.contsub'
     if os.access(contsub_outputvis, F_OK):
-        os.system('rm -rf ' + contsub_outputvis)
+        rmtables(contsub_outputvis)
+#         os.system('rm -rf ' + contsub_outputvis)
 
     # Do continuum subtraction
     uvcontsub(vis=msfile,
@@ -157,7 +164,9 @@ def cont_sub(msfile,
     if mfs_namebase is not None:
         # Make a dirty image of the selected line free channels and make sure it is noise like. Examining whether the continuum subtraction worked well or not.
         dirty_namebase = mfs_namebase + '.dirty.mfs.noise'
-        os.system('rm -rf ' + dirty_namebase + '.*')
+        if os.access(dirty_namebase, F_OK):
+            rmtables(dirty_namebase + '.*')
+#         os.system('rm -rf ' + dirty_namebase + '.*')
         clean(vis=msfile,
               imagename=dirty_namebase,
               spw=cont_window,
@@ -174,10 +183,15 @@ def cont_sub(msfile,
               psfmode='clark',
               stokes='I',
               niter=0)
+        exportfits(dirty_namebase + '.image', dirty_namebase + '.fits')
+        # remove intermediate file to save space
+        rmtables(dirty_namebase + '.*')
 
         # Make a clean image from continuum MS
         image_namebase = mfs_namebase + '.clean.cont.mfs'
-        os.system('rm -rf ' + image_namebase + '.*')
+        if os.access(image_namebase, F_OK):
+            rmtables(image_namebase + '.*')
+#         os.system('rm -rf ' + image_namebase + '.*')
         clean(vis=cont_outputvis,
               imagename=image_namebase,
         #       outframe='LSRK',
@@ -197,6 +211,9 @@ def cont_sub(msfile,
               interactive=False,
               weighting='briggs',
               robust=0.)
+        exportfits(image_namebase + '.image', image_namebase + '.fits')
+        # remove intermediate file to save space
+        rmtables(image_namebase + '.*')
 
     return contsub_outputvis
 
@@ -204,7 +221,7 @@ def cont_sub(msfile,
 # Create data cubes and make moment 0 map
 def make_cubes(msfile,
                cube_namebase,
-               restfreq,
+               freq_str,
                cont_window,
                imsize=8192,
                cellsize='1.5arcsec',
@@ -213,7 +230,9 @@ def make_cubes(msfile,
 
     # Dirty cube of emission free channels to estimate the RMS noise.
     dirty_namebase = cube_namebase + '.dirty.contsub.noise'
-    os.system('rm -rf ' + dirty_namebase + '.*')
+    if os.access(dirty_namebase, F_OK):
+        rmtables(dirty_namebase + '.*')
+#     os.system('rm -rf ' + dirty_namebase + '.*')
 
     freq_str = str(restfreq/1e6)+'MHz',
     clean(vis=msfile,
@@ -234,11 +253,14 @@ def make_cubes(msfile,
     threshold = str(rms) + 'Jy'
     print(f'Making clean cube down to a threshold of {threshold}')
     # remove intermediate dataset
-    os.system('rm -rf ' + dirty_namebase + '.*')
+    rmtables(dirty_namebase + '.*')
+#     os.system('rm -rf ' + dirty_namebase + '.*')
 
     # Make a clean cube to extract spectra
     clean_namebase = cube_namebase + '.clean.contsub.velocity'
-    os.system('rm -rf ' + clean_namebase + '.*')
+    if os.access(clean_namebase, F_OK):
+        rmtables(clean_namebase + '.*')
+#     os.system('rm -rf ' + clean_namebase + '.*')
 
     clean(vis=msfile,
           imagename=clean_namebase,
@@ -265,12 +287,15 @@ def make_cubes(msfile,
 
     # extract moment 0
     mom0_file = clean_namebase + '.mom0'
-    os.system('rm -rf ' + mom0_file)
+    if os.access(mom0_file, F_OK):
+        rmtables(mom0_file)
+#     os.system('rm -rf ' + mom0_file)
 
     immoments(imagename=clean_namebase + '.image',
               outfile=mom0_file,
               excludepix=[-100, rms],
               moments=[0])
+    exportfits(mom0_file + '.mom0', mom0_file + '.fits')
 
     return clean_namebase, mom0_file
 
@@ -315,14 +340,29 @@ threshold = ' '.join([str(3*snr), 'Jy'])
 print('Set clean threshold = {}'.format(threshold))
 
 # OH maser lines – The full rest frequency as a floating point number
-maser_lines = [1665.40184e6, 1667.35903e6]  # Hz
-cont_windows = ['*:1655.64MHz~1664.06MHz;1668.75MHz~1674.56MHz', None]
-masers = ["G330.878-0.367", "G330.954-0.182", "G331.132-0.244", "G331.278-0.188", "G331.442-0.186"]
-masks = [[4100,4100], [4269,4549], [3856,4731], [3687,5067], [3403,5337]]
-directions = ["J2000 16h10m20.01 -52d06m07.7", "J2000 16h09m52.60 -51d54m53.7", "J2000 16h10m59.72 -51d50m22.7", "J2000 16h11m26.57 -51d41m56.5", "J2000 16h12m12.41 -51d35m09.5"]
+maser_lines = [1665.40184e6,
+               1667.35903e6]  # Hz
+cont_windows = ['*:1655.64MHz~1664.06MHz;1668.75MHz~1674.56MHz',
+                None]
+masers = ["G330.878-0.367",
+          "G330.954-0.182",
+          "G331.132-0.244",
+          "G331.278-0.188",
+          "G331.442-0.186"]
+maser_boxes = [[4100,4100],
+               [4269,4549],
+               [3856,4731],
+               [3687,5067],
+               [3403,5337]]
+directions = ["J2000 16h10m20.01 -52d06m07.7",
+              "J2000 16h09m52.60 -51d54m53.7",
+              "J2000 16h10m59.72 -51d50m22.7",
+              "J2000 16h11m26.57 -51d41m56.5",
+              "J2000 16h12m12.41 -51d35m09.5"]
 
 for restfreq, cont_window in zip(maser_lines, cont_windows):
-    cvel_msfile = split_vlsr(rest_freq)  # Doppler corrected MS
+    [cvel_msfile,
+     freq_string] = split_vlsr(rest_freq)  # Doppler corrected MS
 
     if cont_window is None:
         # Identify these channels and ranges using plotms to plot channel vs amplitude
@@ -331,7 +371,7 @@ for restfreq, cont_window in zip(maser_lines, cont_windows):
     mfs_namebase = target + '-' + freq_string
     contsub_msfile = cont_sub(cvel_msfile, cont_window, mfs_namebase=mfs_namebase)
 
-    for maser, maskcenter, phasecenter in zip(masers, masks, directions):
+    for maser, maskcenter, phasecenter in zip(masers, maser_boxes, directions):
         print("\n")
         print(f"Processing {maser}")
 
@@ -343,7 +383,7 @@ for restfreq, cont_window in zip(maser_lines, cont_windows):
         [cleancube_msfile,
          mom0_file] = make_cubes(contsub_msfile,
                                  cube_namebase,
-                                 restfreq,
+                                 freq_string,
                                  cont_window,
                                  outframe='LSRK',
                                  start_vel='-150km/s',
@@ -357,6 +397,7 @@ for restfreq, cont_window in zip(maser_lines, cont_windows):
                      mom0_file,
                      spectrum_basename,
                      )
+        rmtables(mom0_file)
         
 
 ## -- Spectral line algo --
