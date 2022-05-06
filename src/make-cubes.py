@@ -8,6 +8,8 @@ import casac
 import numpy as np
 import matplotlib.pylab as plt
 
+DEBUG=False
+
 # Create data cubes and make moment 0 map
 def make_cubes(msfile,
                cube_namebase,
@@ -24,39 +26,39 @@ def make_cubes(msfile,
     if os.access(clean_namebase, F_OK):
         rmtables(clean_namebase + '.*')
 
-    clean(vis=msfile,
-          imagename=clean_namebase,
-          mode='velocity',
-          start=kwargs['start_vel'],
-          nchan=kwargs['nchan'],
-          width=kwargs['width'],
-          interpolation='linear', 
-          outframe=outframe,
-          restfreq=freq_str,
-          niter=10000,
-          gain=0.85,  # 0.05
-          threshold='3mJy',
-          psfmode='clark',
-          imsize=imsize,
-          cell=cellsize,
-          mask=kwargs['box_mask'],
-          phasecenter=kwargs['phasecenter'],
-          pbcor=False,
-          interactive=False,
-          usescratch=True,
-          weighting='briggs',
-          robust=0.) 
+    if DEBUG:
+        print("clean(vis={}, imagename={}, mode='velocity', start={}, nchan={}, width={}, interpolation='linear', " \
+              "outframe={}, restfreq={}, niter=10000, gain=0.85, threshold='3mJy', psfmode='clark', " \
+              "imsize={}, cell={}, mask=[{}], phasecenter={}, weighting='briggs', robust=0., " \
+              "pbcor=False, interactive=False, usescratch=True)"
+                .format(msfile, clean_namebase, kwargs['start_vel'], kwargs['nchan'], kwargs['width'],
+                        outframe, freq_str, imsize, cellsize, ','.join(map(str, kwargs['box_mask'])), kwargs['phasecenter']))
+    else:
+        clean(vis=msfile, imagename=clean_namebase,
+              mode='velocity', start=kwargs['start_vel'],
+              nchan=kwargs['nchan'], width=kwargs['width'], interpolation='linear', 
+              outframe=outframe, restfreq=freq_str,
+              niter=10000, gain=0.85,  # 0.05
+              threshold='3mJy', psfmode='clark',
+              imsize=imsize, cell=cellsize,
+              mask=kwargs['box_mask'], phasecenter=kwargs['phasecenter'],
+              weighting='briggs', robust=0., 
+              pbcor=False, interactive=False, usescratch=True)
 
     # extract moment 0
     mom0_file = clean_namebase + '.mom0'
+#     os.system('rm -rf ' + mom0_file)
     if os.access(mom0_file, F_OK):
         rmtables(mom0_file)
-#     os.system('rm -rf ' + mom0_file)
 
-    immoments(imagename=clean_namebase + '.image',
-              outfile=mom0_file,
-              excludepix=[-100, rms],
-              moments=[0])
+    if DEBUG:
+        print("immoments(imagename={}, outfile={}, excludepix=[-100, {}], moments=[0])"
+                .format(clean_namebase+'.image', mom0_file, kwargs['rms']))
+    else:
+        immoments(imagename=clean_namebase + '.image',
+                  outfile=mom0_file,
+                  excludepix=[-100, kwargs['rms']],
+                  moments=[0])
 
     return clean_namebase, mom0_file
 
@@ -89,57 +91,175 @@ def get_spectrum(image_file, mom0_file, spectrum_basename):
     plt.ylabel(r"$S_{\nu}$ (Jy)",fontsize=16)
     plt.title(spectrum_basename)
     im_file = spectrum_basename + '-spectrum.png'
-    plt.savefig(imfile)
+    plt.savefig(im_file)
 
     rmtables(mom0_file)
 
 
+## Main section, doing the masers individually and explicitly
 restfreq = 1665.40184e6  # Hz
 cont_window = '*:1655.64MHz~1664.06MHz;1668.75MHz~1674.56MHz'
-masers = ["G330.878-0.367",
-          "G330.954-0.182",
-          "G331.132-0.244",
-          "G331.278-0.188",
-          "G331.442-0.186"]
-masks = [[4100,4100],
-         [4269,4549],
-         [3856,4731],
-         [3687,5067],
-         [3403,5337]]
-directions = ["J2000 16h10m20.01 -52d06m07.7",
-              "J2000 16h09m52.60 -51d54m53.7",
-              "J2000 16h10m59.72 -51d50m22.7",
-              "J2000 16h11m26.57 -51d41m56.5",
-              "J2000 16h12m12.41 -51d35m09.5"]
-
+# contsub_msfile='1625501782_sdp_l0-G330_89_0_36-corr-1665.40184MHz.cvel.ms.contsub'
+contsub_msfile='1625501782_sdp_l0-G330_89_0_36-corr-1665.40184MHz-split.cvel.ms.contsub'
 # Set MS rest frequency
 freq_string=str(restfreq/1e6)+'MHz'
-contsub_msfile='1625501782_sdp_l0-G330_89_0_36-corr-1665.40184MHz.cvel.ms.contsub'
-for maser, maskcenter, phasecenter in zip(masers, masks, directions):
-    print("\n")
-    print("Processing {}, in box {}: {}".format(maser, maskcenter, phasecenter))
+rms = 0.00022893
 
-    cube_namebase = maser + '-' + freq_string
-    delta = np.array([80,80])
-    centre = np.array(maskcenter)
-    box_mask=[centre[0]-delta[0]/2, centre[1]-delta[1]/2,
-              centre[0]+delta[0]/2, centre[1]+delta[1]/2]
+maser = "G330.878-0.367"
+maskcenter = [4100,4100]
+phasecenter = "J2000 16h10m20.01 -52d06m07.7"
+print("\n")
+print("Processing {}, in box {}: {}".format(maser, maskcenter, phasecenter))
+cube_namebase = maser + '-' + freq_string
+delta = np.array([80,80])
+centre = np.array(maskcenter)
+box_mask=[centre[0]-delta[0]/2, centre[1]-delta[1]/2,
+          centre[0]+delta[0]/2, centre[1]+delta[1]/2]
+# [cleancube_msfile,
+#  mom0_file] = make_cubes(contsub_msfile,
+#                          cube_namebase,
+#                          freq_string,
+#                          cont_window,
+#                          outframe='LSRK',
+#                          start_vel='-150km/s',
+#                          nchan=319,
+#                          width='0.5km/s',
+#                          rms=rms,
+#                          box_mask=box_mask,
+#                          phasecenter=phasecenter)
+# spectrum_basename= maser + '-' + freq_string
+# # cleancube_msfile='G330.878-0.367-1665.40184MHz.clean.contsub.velocity'
+# # mom0_file='G330.878-0.367-1665.40184MHz.clean.contsub.velocity.mom0'
+# if not DEBUG:
+# #     get_spectrum(cleancube_msfile+'.image',
+# #                  cleancube_msfile+'.mom0',
+# #                  spectrum_basename)
+#     get_spectrum(cleancube_msfile+'.image',
+#                  mom0_file,
+#                  spectrum_basename)
 
-    [cleancube_msfile,
-     mom0_file] = make_cubes(contsub_msfile,
-                             cube_namebase,
-                             freq_string,
-                             cont_window,
-                             outframe='LSRK',
-                             start_vel='-150km/s',
-                             nchan=319,
-                             width='0.5km/s',
-                             box_mask=box_mask,
-                             phasecenter=phasecenter)
 
-    spectrum_basename= maser + '-' + freq_string
+maser = "G330.954-0.182"
+maskcenter = [4269,4549]
+phasecenter = "J2000 16h09m52.60 -51d54m53.7"
+print("\n")
+print("Processing {}, in box {}: {}".format(maser, maskcenter, phasecenter))
+cube_namebase = maser + '-' + freq_string
+delta = np.array([80,80])
+centre = np.array(maskcenter)
+box_mask=[centre[0]-delta[0]/2, centre[1]-delta[1]/2,
+          centre[0]+delta[0]/2, centre[1]+delta[1]/2]
+# [cleancube_msfile,
+#  mom0_file] = make_cubes(contsub_msfile,
+#                          cube_namebase,
+#                          freq_string,
+#                          cont_window,
+#                          outframe='LSRK',
+#                          start_vel='-150km/s',
+#                          nchan=319,
+#                          width='0.5km/s',
+#                          rms=rms,
+#                          box_mask=box_mask,
+#                          phasecenter=phasecenter)
+# spectrum_basename= maser + '-' + freq_string
+# if not DEBUG:
+#     get_spectrum(cleancube_msfile+'.image',
+#                  mom0_file,
+#                  spectrum_basename)
+# # cleancube_msfile='G330.954-0.182-1665.40184MHz.clean.contsub.velocity'
+# # mom0_file='G330.954-0.182-1665.40184MHz.clean.contsub.velocity.mom0'
+# # if not DEBUG:
+# #     get_spectrum(cleancube_msfile+'.image',
+# #                  cleancube_msfile+'.mom0',
+# #                  spectrum_basename)
+
+
+maser = "G331.132-0.244"
+maskcenter = [3856,4731]
+phasecenter = "J2000 16h10m59.72 -51d50m22.7"
+print("\n")
+print("Processing {}, in box {}: {}".format(maser, maskcenter, phasecenter))
+cube_namebase = maser + '-' + freq_string
+delta = np.array([80,80])
+centre = np.array(maskcenter)
+box_mask=[centre[0]-delta[0]/2, centre[1]-delta[1]/2,
+          centre[0]+delta[0]/2, centre[1]+delta[1]/2]
+[cleancube_msfile,
+ mom0_file] = make_cubes(contsub_msfile,
+                         cube_namebase,
+                         freq_string,
+                         cont_window,
+                         outframe='LSRK',
+                         start_vel='-150km/s',
+                         nchan=319,
+                         width='0.5km/s',
+                         rms=rms,
+                         box_mask=box_mask,
+                         phasecenter=phasecenter)
+spectrum_basename= maser + '-' + freq_string
+if not DEBUG:
     get_spectrum(cleancube_msfile+'.image',
                  mom0_file,
                  spectrum_basename)
+
+
+# maser = "G331.278-0.188"
+# maskcenter = [3687,5067]
+# phasecenter = "J2000 16h11m26.57 -51d41m56.5"
+# print("\n")
+# print("Processing {}, in box {}: {}".format(maser, maskcenter, phasecenter))
+# cube_namebase = maser + '-' + freq_string
+# delta = np.array([80,80])
+# centre = np.array(maskcenter)
+# box_mask=[centre[0]-delta[0]/2, centre[1]-delta[1]/2,
+#           centre[0]+delta[0]/2, centre[1]+delta[1]/2]
+# [cleancube_msfile,
+#  mom0_file] = make_cubes(contsub_msfile,
+#                          cube_namebase,
+#                          freq_string,
+#                          cont_window,
+#                          outframe='LSRK',
+#                          start_vel='-150km/s',
+#                          nchan=319,
+#                          width='0.5km/s',
+#                          rms=rms,
+#                          box_mask=box_mask,
+#                          phasecenter=phasecenter)
+# spectrum_basename= maser + '-' + freq_string
+# if not DEBUG:
+#     get_spectrum(cleancube_msfile+'.image',
+#                  mom0_file,
+#                  spectrum_basename)
+# 
+# 
+# maser = "G331.442-0.186"
+# maskcenter = [3403,5337]
+# phasecenter = "J2000 16h12m12.41 -51d35m09.5"
+# print("\n")
+# print("Processing {}, in box {}: {}".format(maser, maskcenter, phasecenter))
+# cube_namebase = maser + '-' + freq_string
+# delta = np.array([80,80])
+# centre = np.array(maskcenter)
+# box_mask=[centre[0]-delta[0]/2, centre[1]-delta[1]/2,
+#           centre[0]+delta[0]/2, centre[1]+delta[1]/2]
+# [cleancube_msfile,
+#  mom0_file] = make_cubes(contsub_msfile,
+#                          cube_namebase,
+#                          freq_string,
+#                          cont_window,
+#                          outframe='LSRK',
+#                          start_vel='-150km/s',
+#                          nchan=319,
+#                          width='0.5km/s',
+#                          rms=rms,
+#                          box_mask=box_mask,
+#                          phasecenter=phasecenter)
+# spectrum_basename= maser + '-' + freq_string
+# if not DEBUG:
+#     get_spectrum(cleancube_msfile+'.image',
+#                  mom0_file,
+#                  spectrum_basename)
+# 
+
 
 # -fin-
