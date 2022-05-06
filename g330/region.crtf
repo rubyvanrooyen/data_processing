@@ -1,0 +1,14 @@
+#CRTFv0 CASA Region Text Format version 
+global coord=J2000
+
+symbol[[16:10:20.01, -52.06.07.7], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G330.878-0.367", labelcolor='green', labelpos=left
+symbol[[16:09:52.38, -51.54.57.3], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G330.953-0.182", labelcolor='green', labelpos=left
+symbol[[16:09:52.60, -51.54.53.7], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G330.954-0.182", labelcolor='green', labelpos=left
+symbol[[16:10:59.72, -51.50.22.7], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.132-0.244", labelcolor='green', labelpos=left
+symbol[[16:11:26.57, -51.41.56.5], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.278-0.188", labelcolor='green', labelpos=left
+symbol[[16:12:26.46, -51.46.16.3], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.342-0.346", labelcolor='green', labelpos=left
+symbol[[16:12:12.41, -51.35.09.5], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.442-0.186", labelcolor='green', labelpos=left
+symbol[[16:12:10.12, -51.28.37.7], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.512-0.103", labelcolor='green', labelpos=left
+symbol[[16:12:09.16, -51.25.45.3], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.54*-0.066", labelcolor='green', labelpos=left
+symbol[[16:12:27.19, -51.27.38.1], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G331.556-0.121", labelcolor='green', labelpos=left
+symbol[[16:05:41.72, -49.11.30.5], x], color=green, font="DejaVu Sans", fontsize=12, fontstyle='normal', label="   G332.295+2.280", labelcolor='green', labelpos=left
