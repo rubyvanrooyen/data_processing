@@ -85,8 +85,8 @@ From directory: /home/data/OH_monitoring -- run command
 ```
 
 ### inspecting data
-View the calibrator data for initial flagging using the calibrators and wideband data
-<link to notebook link>
+View the calibrator data for initial flagging using the calibrators and wideband data.
+Some example [notebooks](https://github.com/rubyvanrooyen/data_processing/tree/master/notebooks) are available in the repository.
 Use only frequency, time periods and explicit target names to allow mapping of CASA flags to caracal   
 However, for the averaging, use the ms information since it is only for visualisation and
 smoothing/averaging of the data.
@@ -125,11 +125,23 @@ To remove all output, as well as
 make clobber
 ```
 
-### Imaging and spectral line analysis
+## Implementation
+### Wideband data processing
+* Run the basic CARACAL workers to create an MS file of calibrator sources
+`caracal -c run-g330-4k.yml -sw general -ew prep__calibrators`
+* Initial cycle of flagging, calibration and inspection using CARACAL workers
+`caracal -c run-g330-4k.yml -sw flag__calibrators -ew inspect`
+
+### Narrow band data processing
+* Run the basic CARACAL workers to create an MS file of calibrator sources    
+Initial cycle of flagging, calibration and inspection using CARACAL workers
+`caracal -c run-g330-4k.yml -ew flag__calibrators
+
+
+## Imaging and spectral line analysis
 ```
 wsclean -j 8 -name G330_89_0_36-wide.clean -size 8192 8192  -scale 1.5arcsec -weight briggs -0.5 -niter 20000 -threshold 0.0 -channels-out 7 -pol I -fit-spectral-pol 3 -auto-threshold 10  -auto-mask 15 -padding 1.2 -mgain 0.85 -join-channels -fit-beam 1625501775_sdp_l0-G330_89_0_36-corr.ms
 ```
-
 
 ```
 casa --log2term
