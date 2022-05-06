@@ -125,4 +125,30 @@ To remove all output, as well as
 make clobber
 ```
 
+### Imaging and spectral line analysis
+```
+wsclean -j 8 -name G330_89_0_36-wide.clean -size 8192 8192  -scale 1.5arcsec -weight briggs -0.5 -niter 20000 -threshold 0.0 -channels-out 7 -pol I -fit-spectral-pol 3 -auto-threshold 10  -auto-mask 15 -padding 1.2 -mgain 0.85 -join-channels -fit-beam 1625501775_sdp_l0-G330_89_0_36-corr.ms
+```
+
+
+```
+casa --log2term
+
+run spectral-analysis.py
+
+run make-cubes.py
+
+viewer('G330.878-0.367-1665.40184MHz.clean.contsub.velocity.image')
+imagename='G330.878-0.367-1665.40184MHz.clean.contsub.velocity.image'
+mom0_file='G330.878-0.367-1665.40184MHz.clean.contsub.velocity.mom0'
+immoments(imagename=imagename, outfile=mom0_file, excludepix=[-100, 0.00022893], moments=[0])
+
+viewer('G330.954-0.182-1665.40184MHz.clean.contsub.velocity.image')
+mom0_file='G330.954-0.182-1665.40184MHz.clean.contsub.velocity.mom0'
+imagename='G330.954-0.182-1665.40184MHz.clean.contsub.velocity.image'
+immoments(imagename=imagename, outfile=mom0_file, excludepix=[-100, 0.00022893], moments=[0])
+
+run get-spectrum.py
+```
+
 -fin-

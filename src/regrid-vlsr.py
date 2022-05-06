@@ -24,7 +24,7 @@ target = 'G330.89-0.36'
 def regrid_vlsr(cal_target_ms,
                 target,
                 restfreq,
-                spw='',
+#                 spw='',
                 rm_outvis=False,
                 ):
 
@@ -37,7 +37,7 @@ def regrid_vlsr(cal_target_ms,
     split(vis=cal_target_ms,
           outputvis=split_outvis,
           field=target,
-          spw=spw,
+#           spw=spw,
           datacolumn='all')
 
     tb.open(split_outvis+'/SPECTRAL_WINDOW', nomodify=False)
@@ -51,6 +51,8 @@ def regrid_vlsr(cal_target_ms,
     cvel(vis=split_outvis,
          outputvis=cvel_outvis,
          mode='velocity',
+#          start=start_vel,
+#          nchan=nchans,
          interpolation='linear',
          outframe='LSRK',
          restfreq=freq_str)
@@ -68,11 +70,13 @@ def regrid_vlsr(cal_target_ms,
 regrid_vlsr(cal_target_ms=vis_maser,
             target=target,
             restfreq=1665.40184e6,
+#             spw='0:17250~17550',
             )
 
-regrid_vlsr(cal_target_ms=vis_maser,
-            target=target,
-            restfreq=1667.35903e6,
-            )
+# regrid_vlsr(cal_target_ms=vis_maser,
+#             target=target,
+#             restfreq=1667.35903e6,
+# #           spw='0:??~??',
+#             )
 
 # -fin-

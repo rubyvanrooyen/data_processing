@@ -41,6 +41,7 @@ transform__calibrators:
     enable: true
     chan_avg: 8
     col: data
+
 # Prepare the calibrators-only .MS files for processing.
 prep__calibrators:
   enable: true
@@ -76,27 +77,28 @@ flag__calibrators:
     # these modes will prob be used for spectral lines, and flagged manually
     chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
     ensure_valid: false
-## may want want to auto flag the RFI in the calibrator data sets for good calibration results
+
+# Auto flag the RFI in the calibrator data sets for good calibration results
 # Flag RFI using AOFlagger, Tricolour, or CASA FLAGDATA with tfcrop.
 # RFI flagging masks are not applied because you can flag out the lines
-#   flag_mask:
-#     enable: true
-#     mask: meerkat.rfimask.npy
-#     uvrange: '0~1000'
 # from old Josh configs
 #   flag_rfi:
 #     enable: true
 #     flagger: aoflagger
 #     fields: 'auto'
-# flag__cal_rfi:
-#   enable: true
-#   label_in: cal
-#   field: calibrators
-#   flag_rfi:
-#     enable: true
-#     flagger: tricolour
-#     tricolour:
-#       strategy: khruschev.yaml
+flag__cal_rfi:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_mask:
+    enable: true
+    mask: meerkat.rfimask.npy
+    uvrange: '0~1000'
+  flag_rfi:
+    enable: true
+    flagger: tricolour
+    tricolour:
+      strategy: khruschev.yaml
 
 # Flag bad data identified manually
 flag__cal_manual:
@@ -271,6 +273,7 @@ transform__target:
         delay_cal: nearest
         bp_cal: nearest
         gain_cal: linear
+
 prep__target:
   enable: true
   label_in: corr
