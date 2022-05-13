@@ -1,3 +1,5 @@
+## Standard required input workers (always include in all yaml configs)
+
 schema_version: 1.0.4
 
 
@@ -18,11 +20,13 @@ getdata:
   dataid: [msfilename]
   extension: ms
 
+# Compulsory worker to set up target/calibrators names.
 obsconf:
   refant: auto
 
 
 ## Processing calibrators
+# Calibrators-only .MS file
 # Split calibrators-only .MS files, one per input .MS file.
 # This worker splits the calibrators (in preparation for cross-calibration) or the targets (in
 # preparation for imaging) to new .MS files. Time and frequency averaging is available, as well as
@@ -191,6 +195,7 @@ inspect:
 
 
 ## Imaging wideband target
+# Target-only .MS file
 # Split target-only .MS files, one per input .MS file and target, applying the
 # cross-calibration on the fly.
 transform__target:
@@ -237,9 +242,14 @@ flag__target:
     enable: false
     field: target
 
+# This worker creates an a-priori clean mask based on NVSS or SUMSS, to be used during the continuum
+# imaging/self-calibration loop.
 mask:
   enable: false
 
+# This worker performs continuum imaging and standard (i.e., direction-independent) self-calibration.
+# Make a continuum image of each target, self-calibrate, and transfer both gains
+# and continuum model to the full-frequency-resolution target-only .MS files.
 selfcal:
   enable: true
   label_in: corr
