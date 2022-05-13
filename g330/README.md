@@ -8,12 +8,12 @@ Commissioning
 Targets: 3 selected out of 3 in catalogue
   ID  Name          Type      RA(J2000)     DEC(J2000)  Tags
    0  J1939-6342    radec     19:39:25.03  -63:42:45.6  fluxcal bpcal delaycal 
-   1  G330.89-0.36  radec     16:10:20.54  -52:06:14.9  target  
+   1  G330.89-0.36  radec     16:10:20.54  -52:06:14.9  target
    2  J1726-5529    radec     17:26:49.63  -55:29:40.5  gaincal
 ```
 
 ## CASA data
-Selected individual sources for CASA recipe extraction to caracal pipeline   
+Selected individual sources for CASA recipe extraction to caracal pipeline
 ```
 # primary calibrator
  ./getms.sh -r 163,3885 --t J1939-6342 https://archive-gw-1.kat.ac.za/1626935818/1626935818_sdp_l0.full.rdb?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJrYXQtYXJjaGl2ZS5rYXQuYWMuemEiLCJhdWQiOiJhcmNoaXZlLWd3LTEua2F0LmFjLnphIiwiaWF0IjoxNjI2OTU2NjMwLCJwcmVmaXgiOlsiMTYyNjkzNTgxOCJdLCJleHAiOjE2Mjc1NjE0MzAsInN1YiI6InJ1YnlAc2FyYW8uYWMuemEiLCJzY29wZXMiOlsicmVhZCJdfQ.wye2P0SprT-13CZLcWLYhhyeg_NLwgUWFOJUoku2BcKuEnKcUTPQ3uh_AoyY05tUdD0Wvy7WkaNRdLYkvub6Og
@@ -61,27 +61,9 @@ mvftoms.py -f --flags cam <katdaltoken>
 ```
 
 
-## CASA on com14 using singularity
-Not doing a new CASA installation, using the old singularity image to view the data with CASA    
-Basic bash prompt inside the container
-```
-singularity shell -B /scratch/ruby /scratch/shared/containers/singularity/sarao_science.simg
-```
-or
-```
-singularity exec -B /scratch/ruby /scratch/shared/containers/singularity/sarao_science.simg /bin/bash --norc
-```
-
-CASA binary lives in:`ls /usr/src/casa/casa-release-5.3.0-143.el7/bin/`    
-for convenience, create a symbolic link: `ln -s /usr/src/casa/casa-release-5.3.0-143.el7/bin/casa`
+## CASA on com14
 ```
 ./casa --log2term --nologger
-```
-
-### remove CASA generated cvel directories to clear up space.
-From directory: /home/data/OH_monitoring -- run command
-```
-./bin/zap_cvel.sh
 ```
 
 ### inspecting data
@@ -132,11 +114,12 @@ make clobber
 `caracal -c run-g330-4k.yml -sw general -ew prep__calibrators`
 * Initial cycle of flagging, calibration and inspection using CARACAL workers
 `caracal -c run-g330-4k.yml -sw flag__calibrators -ew inspect`
+* Selfcal and imaging <TBD>
 
 ### Narrow band data processing
 * Run the basic CARACAL workers to create an MS file of calibrator sources    
 Initial cycle of flagging, calibration and inspection using CARACAL workers
-`caracal -c run-g330-4k.yml -ew flag__calibrators
+`caracal -c run-g330-32k.yml -ew flag__calibrators
 
 
 ## Imaging and spectral line analysis
