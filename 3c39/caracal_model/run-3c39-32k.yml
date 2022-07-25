@@ -8,11 +8,11 @@ general:
   prefix: 3C39_comet_OH
   title: 3C39_comet_OH
   # Location where CARACal will write and expect to find .MS files
-  msdir: msdir
+  msdir: msdir-smooth
   # This directory and the input .MS files within it can be read-only
   rawdatadir: ms-orig
   # Location where CARACal writes output products
-  output: output-3c39-32k
+  output: output-3c39-32k-smooth
 
 # Compulsory worker to specify the input .MS files.
 getdata:
@@ -75,7 +75,7 @@ flag__calibrators:
     enable: true
     # for narrow band only flag out the band edges
     # these modes will prob be used for spectral lines, and flagged manually
-    chans: '*:1630MHz~1655MHz,*:1673MHz~1700MHz'
+    chans: '*:1630MHz~1657MHz,*:1673MHz~1700MHz'
     ensure_valid: false
 
 # Auto flag the RFI in the calibrator data sets for good calibration results
@@ -93,6 +93,7 @@ flag__calibrators:
 #     tricolour:
 #       strategy: khruschev.yaml
 
+# Auto flag the RFI in the calibrator data sets for good calibration results
 # flag__cal_manual:
 #   enable: true
 #   label_in: cal
@@ -106,6 +107,8 @@ flag__calibrators:
 #     timerange: '2021/07/25/04:12:27~2021/07/25/04:12:28,2021/07/25/04:12:35~2021/07/25/04:12:52,2021/07/25/05:06:26~2021/07/25/05:06:35,2021/07/25/07:34:22~2021/07/25/07:35:19'
 #     ensure_valid: false
 
+# Derive the cross-calibration tables and apply them to the calibrators.
+# Carry out Cross calibration of the data (delay, bandpass and gain calibration).
 crosscal:
   enable: true
   label_in: cal
@@ -118,16 +121,17 @@ crosscal:
   primary:
     reuse_existing_gains: true
     order: KGBAKGB
-    combine: ["scan,field", "spw", "scan,field", null, "", "", "scan"]
+    combine: ["scan", "spw", "scan", null, "", "", "scan"]
     solint: [inf, inf, inf, null, int, int, inf]
     calmode: [ap, ap, ap, null, ap, ap, ap]
     b_fillgaps: 70
+    b_smoothwindow: 32
     plotgains: true
   secondary:
     reuse_existing_gains: true
     order: KGAKF
     apply: B
-    combine: ["scan,field", "spw", null, "", ""]
+    combine: ["scan", "spw", null, "", ""]
     solint: [inf, inf, null, 60s, 60s]
     calmode: [ap, ap, null, ap, ap]
     plotgains: true
@@ -137,82 +141,82 @@ crosscal:
       - bpcal
       - gcal
 
-inspect:
-  enable: true
-  label_in: cal
-  field: calibrators
-  label_plot: 'plot_1gc'
-  dirname: crosscal
-  correlation: all
-  standard_plotter: none
-  shadems:
-    enable: true
-    default_column: CORRECTED_DATA
-    plots:
-      - desc: "plots by field"
-        field: "{all_fields}"
-        cnum: 100  # up 100 colours
-        iter_field: true
-        plots:
-          # phaseball plots
-          - dir: "phaseballs-{msbase}"
-            plots:
-              - "-x real -y imag -c CORR --corr IQUV --hline 0: --vline 0:"
-              - "-x real -y imag -c SCAN_NUMBER"
-              - "-x real -y imag -c ANTENNA1"
-          - dir: "phaseballs-bycorr-{msbase}"
-            iter_corr:
-            plots:
-              - "-x real -y imag -c SCAN_NUMBER"
-              - "-x real -y imag -c ANTENNA1"
-          # normalized phaseballs
-          - dir: "normballs-{msbase}"
-            col: "CORRECTED_DATA/MODEL_DATA"
-            corr: "XX,YY"
-            iter_corr:
-            plots:
-              - "-x real -y imag -c SCAN_NUMBER"
-              - "-x real -y imag -c ANTENNA1"
-          # block and triangle plots
-          - dir: "blockplots-{msbase}"
-            plots:
-              - "-x BASELINE_M -y FREQ -c amp"
-              - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis phase --ared std"
-              - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis amp --ared mean"
-          # amp/phase versus uv-distance, and uv-coverage coloured by amp/phase
-          - dir: "uvdist-{msbase}"
-            plots:
-              - "-x UV -y amp    -c SCAN_NUMBER"
-              - "-x UV -y amp    -c ANTENNA1"
-              - "-x UV -y phase  -c ANTENNA1 --corr XX,YY"
-              - "-x U  -y V      -c amp"
-              - "-x U  -y V      -c phase --cmin -5 --cmax 5"
-          # spectral plots
-          - dir: "spectra-{msbase}"
-            plots:
-              - "-x FREQ  -y amp  -c SCAN_NUMBER"
-              - "-x FREQ  -y amp  -c ANTENNA1"
-              - "-x FREQ  -y real -c CORR --corr IQUV --hline 0:"
-      # per-antenna plots
-      - iter_ant:
-        desc: "plots by antenna"
-        cmap: pride
-        corr: XX,YY
-        plots:
-          - '-x FREQ -y amp:I -c SCAN_NUMBER --cnum 100 --cmin 0 --cmax 30 --field {bpcal} --dir bpcal-iamp-byant-{msbase}'
-          - '-x FREQ -y SCAN_NUMBER -a amp --ared std --dir stdamp-byant-{msbase}'
-          - '-x FREQ -y SCAN_NUMBER -a phase --ared std --dir stdphase-byant-{msbase}'
-      # per-scan plots
-      - iter_scan:
-        desc: "plots by scan"
-        cmap: pride
-        ared: std
-        corr: XX,YY
-        plots:
-          - '-x ANTENNA1 -y ANTENNA2 -a amp --dir stdamp-byscan-{msbase}'
-          - '-x ANTENNA1 -y ANTENNA2 -a phase --dir stdphase-byscan-{msbase}'
-          - '-x BASELINE_M -y FREQ -a imag --amin 0 --amax 2 --dir stdimag-byscan-{msbase}'
-    ignore_errors: true
+# inspect:
+#   enable: true
+#   label_in: cal
+#   field: calibrators
+#   label_plot: 'plot_1gc'
+#   dirname: crosscal
+#   correlation: all
+#   standard_plotter: none
+#   shadems:
+#     enable: true
+#     default_column: CORRECTED_DATA
+#     plots:
+#       - desc: "plots by field"
+#         field: "{all_fields}"
+#         cnum: 100  # up 100 colours
+#         iter_field: true
+#         plots:
+#           # phaseball plots
+#           - dir: "phaseballs-{msbase}"
+#             plots:
+#               - "-x real -y imag -c CORR --corr IQUV --hline 0: --vline 0:"
+#               - "-x real -y imag -c SCAN_NUMBER"
+#               - "-x real -y imag -c ANTENNA1"
+#           - dir: "phaseballs-bycorr-{msbase}"
+#             iter_corr:
+#             plots:
+#               - "-x real -y imag -c SCAN_NUMBER"
+#               - "-x real -y imag -c ANTENNA1"
+#           # normalized phaseballs
+#           - dir: "normballs-{msbase}"
+#             col: "CORRECTED_DATA/MODEL_DATA"
+#             corr: "XX,YY"
+#             iter_corr:
+#             plots:
+#               - "-x real -y imag -c SCAN_NUMBER"
+#               - "-x real -y imag -c ANTENNA1"
+#           # block and triangle plots
+#           - dir: "blockplots-{msbase}"
+#             plots:
+#               - "-x BASELINE_M -y FREQ -c amp"
+#               - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis phase --ared std"
+#               - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis amp --ared mean"
+#           # amp/phase versus uv-distance, and uv-coverage coloured by amp/phase
+#           - dir: "uvdist-{msbase}"
+#             plots:
+#               - "-x UV -y amp    -c SCAN_NUMBER"
+#               - "-x UV -y amp    -c ANTENNA1"
+#               - "-x UV -y phase  -c ANTENNA1 --corr XX,YY"
+#               - "-x U  -y V      -c amp"
+#               - "-x U  -y V      -c phase --cmin -5 --cmax 5"
+#           # spectral plots
+#           - dir: "spectra-{msbase}"
+#             plots:
+#               - "-x FREQ  -y amp  -c SCAN_NUMBER"
+#               - "-x FREQ  -y amp  -c ANTENNA1"
+#               - "-x FREQ  -y real -c CORR --corr IQUV --hline 0:"
+#       # per-antenna plots
+#       - iter_ant:
+#         desc: "plots by antenna"
+#         cmap: pride
+#         corr: XX,YY
+#         plots:
+#           - '-x FREQ -y amp:I -c SCAN_NUMBER --cnum 100 --cmin 0 --cmax 30 --field {bpcal} --dir bpcal-iamp-byant-{msbase}'
+#           - '-x FREQ -y SCAN_NUMBER -a amp --ared std --dir stdamp-byant-{msbase}'
+#           - '-x FREQ -y SCAN_NUMBER -a phase --ared std --dir stdphase-byant-{msbase}'
+#       # per-scan plots
+#       - iter_scan:
+#         desc: "plots by scan"
+#         cmap: pride
+#         ared: std
+#         corr: XX,YY
+#         plots:
+#           - '-x ANTENNA1 -y ANTENNA2 -a amp --dir stdamp-byscan-{msbase}'
+#           - '-x ANTENNA1 -y ANTENNA2 -a phase --dir stdphase-byscan-{msbase}'
+#           - '-x BASELINE_M -y FREQ -a imag --amin 0 --amax 2 --dir stdimag-byscan-{msbase}'
+#     ignore_errors: true
 
 ## Continuum imaging of target
 
