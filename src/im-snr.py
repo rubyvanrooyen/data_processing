@@ -47,7 +47,9 @@ T = Nints * dt  # sec
 tb.close()
 
 snr = rms_noise_AeT(N, dv, T, 20)  # Jy
-threshold = ' '.join([str(3*snr), 'Jy'])
-print('Set clean threshold = {}'.format(threshold))
+threshold = 3.*snr
+threshold_str = ' '.join([str(3*snr), 'Jy'])
+print('RMS threshold = {}'.format(snr))
+print('Set clean threshold {} = {:.3f} mJy'.format(threshold_str, threshold*1e3))
 
 # -fin-
