@@ -1,18 +1,32 @@
 schema_version: 1.0.4
 
-general:
-  prefix: 3C39line
-  title: 3C39line
-  msdir: msdir
-  rawdatadir: ms-orig
-  output: output-3c39zoom-32k
 
+## Generate MS for calibration
+# Compulsory worker to set up data/input/output directories.
+# The prefix used for the output data products (e.g., diagnostic plots, images, etc.).
+general:
+  prefix: 3C39_comet_OH
+  title: 3C39_comet_OH
+  # Location where CARACal will write and expect to find .MS files
+  msdir: msdir
+  # This directory and the input .MS files within it can be read-only
+  rawdatadir: ms-orig
+  # Location where CARACal writes output products
+  output: output-3c39-32k
+
+# Compulsory worker to specify the input .MS files.
 getdata:
   dataid: [1627186165_sdp_l0]
   extension: ms
 
+# Compulsory worker to set up target/calibrators names.
 obsconf:
   refant: auto
+  obsinfo:
+    enable: True
+    plotelev:
+      enable: True
+      plotter: plotms
 
 
 ## Processing calibrators
@@ -28,6 +42,7 @@ transform__calibrators:
     chan_avg: 8
     col: data
 
+# Prepare the calibrators-only .MS files for processing.
 prep__calibrators:
   enable: true
   label_in: cal
@@ -39,6 +54,15 @@ prep__calibrators:
     enable: true
     mode: uniform
 
+## Initial inspection and flagging
+# Make an inital amplitude vs. channel plot of the bandpass calibrator averaging all the data
+# together in time.
+# Next plot phase vs. channel.
+# Now plot amplitude and phase as a function of time.
+# 0a. Flag out band edges
+# 0b. Automated flagging for shadowing, elevation and extreme outliers
+# 0c. Flagging of identified bad data
+# Check that bad data is gone
 flag__calibrators:
   enable: true
   label_in: cal
@@ -51,22 +75,18 @@ flag__calibrators:
     enable: true
     # for narrow band only flag out the band edges
     # these modes will prob be used for spectral lines, and flagged manually
-    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    chans: '*:1630MHz~1655MHz,*:1673MHz~1700MHz'
     ensure_valid: false
-#   flag_mask:
-#     enable: true
-#     mask: meerkat.rfimask.npy
-#     uvrange: '0~1000'
-# # from old Josh configs
-# #   flag_rfi:
-# #     enable: true
-# #     flagger: aoflagger
-# #     fields: 'auto'
 
+# Auto flag the RFI in the calibrator data sets for good calibration results
 # flag__cal_rfi:
 #   enable: true
 #   label_in: cal
 #   field: calibrators
+#   flag_mask:
+#     enable: true
+#     mask: meerkat.rfimask.npy
+#     uvrange: '0~1000'
 #   flag_rfi:
 #     enable: true
 #     flagger: tricolour
