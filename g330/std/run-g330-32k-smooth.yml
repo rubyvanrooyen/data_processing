@@ -1,0 +1,248 @@
+
+schema_version: 1.0.4
+
+
+## Generate MS for calibration
+# Compulsory worker to set up data/input/output directories.
+# The prefix used for the output data products (e.g., diagnostic plots, images, etc.).
+general:
+  prefix: G330
+  title: G330
+  # Location where CARACal will write and expect to find .MS files
+  msdir: msdir-smooth
+  # This directory and the input .MS files within it can be read-only
+  rawdatadir: ms-orig
+  # Location where CARACal writes output products
+  output: output-g330-smooth
+
+# Compulsory worker to specify the input .MS files.
+getdata:
+  dataid: [1625501782_sdp_l0]
+  extension: ms
+
+# Compulsory worker to set up target/calibrators names.
+obsconf:
+  refant: auto
+
+
+## Processing calibrators
+# Narrow band zoom modes channelise the 32768 channels
+# For calibration average down to the wideband 4096 channels
+# Factor 8 averaging if all channels are available
+transform__calibrators:
+  enable: true
+  label_out: cal
+  field: calibrators
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: data
+
+# Prepare the calibrators-only .MS files for processing.
+prep__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+## Initial inspection and flagging
+# Make an inital amplitude vs. channel plot of the bandpass calibrator averaging all the data
+# together in time.
+# Next plot phase vs. channel.
+# Now plot amplitude and phase as a function of time.
+# 0a. Flag out band edges
+# 0b. Automated flagging for shadowing, elevation and extreme outliers
+# 0c. Flagging of identified bad data
+# Check that bad data is gone
+flag__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    chans: '*:1630MHz~1657MHz,*:1673MHz~1700MHz'
+    ensure_valid: false
+
+# Flag bad data identified manually
+flag__cal_manual:
+  enable: true
+  label_in: cal
+  field: calibrators
+  # time and antenna flags from WB processing is carried over
+  # freq/ channel based flagging are done independently after inspecting the NB data
+  flag_time:
+    enable: true
+    timerange: '2021/07/05/16:17:30~2021/07/05/16:19:50,2021/07/05/16:26:45~2021/07/05/16:27:15'
+    ensure_valid: false
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
+
+# Auto flag the RFI in the calibrator data sets for good calibration results
+# flag__cal_rfi:
+#   enable: true
+#   label_in: cal
+#   field: calibrators
+#   flag_mask:
+#     enable: true
+#     mask: meerkat.rfimask.npy
+#     uvrange: '0~1000'
+#   flag_rfi:
+#     enable: true
+#     flagger: tricolour
+#     tricolour:
+#       strategy: khruschev.yaml
+
+# Derive the cross-calibration tables and apply them to the calibrators.
+# Carry out Cross calibration of the data (delay, bandpass and gain calibration).
+crosscal:
+  enable: true
+  label_in: cal
+  label_cal: 1gc
+  uvrange: '>150'
+  set_model:
+    enable: true
+    # error in 1934 model for this caracal installation, using meqtree model
+    meerkat_skymodel: true
+  primary:
+    reuse_existing_gains: true
+    order: KGBAKGB
+    combine: ["scan", "spw", "scan", null, "", "", "scan"]
+    solint: [inf, inf, inf, null, int, int, inf]
+    calmode: [ap, ap, ap, null, ap, ap, ap]
+    b_fillgaps: 70
+    b_smoothwindow: 32
+    plotgains: true
+  secondary:
+    reuse_existing_gains: true
+    order: KGAKF
+    apply: B
+    combine: ["scan", "spw", null, "", ""]
+    solint: [inf, inf, null, 60s, 60s]
+    calmode: [ap, ap, null, ap, ap]
+    plotgains: true
+  apply_cal:
+    applyto:
+      - fcal
+      - gcal
+
+# Apply calibration to target
+transform__target:
+  enable: true
+  label_out: corr
+  field: target
+  split_field:
+    enable: true
+    otfcal:
+      enable: true
+      label_cal: 1gc
+      interpolation:
+        delay_cal: nearest
+        bp_cal: nearest
+        gain_cal: linear
+
+prep__target:
+  enable: true
+  label_in: corr
+  field: target
+  fixuvw:
+    enable: true
+#   clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__target:
+  enable: true
+  label_in: corr
+  field: target
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+#     chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    chans: '*:1630MHz~1657MHz,*:1673MHz~1700MHz'
+    ensure_valid: false
+
+flag__tgt_manual:
+  enable: true
+  label_in: corr
+  field: target
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
+
+# mask:
+#   enable: false
+
+# # selfcal:
+# #   enable: true
+# #   label: corr
+# #   ncpu: 40
+# #   img_npix: 3600
+# #   img_cell: 2
+# #   img_niter: 1000000
+# #   img_nchans: 12
+# #   cal_niter: 4
+# #   image:
+# #     enable: true
+# #     auto_mask: [20,15,10,5,5]
+# #     auto_threshold: [0.5,0.5,0.5,0.3,0.3]
+# #   calibrate:
+# #     enable: true
+# #     model: ['1','2','3','4']
+# #     gain_matrix_type: ['GainDiagPhase', 'GainDiagPhase', 'GainDiagPhase', 'GainDiag']
+# #     gsols_chan: ['0', '0', '0', '100']
+# #     gsols_timeslots: ['120', '120', '60', '60']
+# #     shared_memory: 250GB
+# #   transfer_apply_gains:
+# #     enable: true
+# #     transfer_to_label: corr
+# #   transfer_model:
+# #     enable: true
+# #     num_workers: 40
+# #     memory_fraction: 0.45
+# #     transfer_to_label: corr
+# #
+# # image_line:
+# #   enable: true
+# #   label: 'l'
+# #   restfreq: '1.420405752GHz'
+# #   subtractmodelcol:
+# #     enable: true
+# #   make_cube:
+# #     enable: true
+# #     npix: [1800]
+# #     cell: 3
+# #     taper: 10
+# #     robust: 0
+# #   mstransform: 
+# #     enable: true
+# #     telescope: meerkat
+# #     fitorder: 1
+# # #    fitspw: '*:1300~1417.2MHz,*:1421.0~1600MHz'
+# #   pb_cube:
+# #     enable: true
+# #   freq_to_vel:
+# #     enable: false
+# #   remove_stokes_axis:
+# #     enable: true
+# #   sofia:
+# #     enable: true
+
+# -fin-
