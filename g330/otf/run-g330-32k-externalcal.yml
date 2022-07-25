@@ -1,0 +1,218 @@
+schema_version: 1.0.4
+
+## Wideband calibration to get gain tables
+
+general:
+  prefix: G330_OHline
+  title: G330_OHline
+  msdir: msdir
+  rawdatadir: ms-orig
+  output: output-g330-oh
+
+getdata:
+  dataid: [1625501775_sdp_l0]
+  extension: ms
+
+obsconf:
+  refant: auto
+
+transform__wb_calibrators:
+  enable: true
+  label_out: &wb_cal cal
+  field: &wb_cals calibrators
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: data
+prep__wb_calibrators:
+  enable: true
+  label_in: *wb_cal
+  field: *wb_cals
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+flag__wb_calibrators:
+  enable: true
+  label_in: *wb_cal
+  field: *wb_cals
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    chans: '*:856MHz~960MHz,*:1080MHz~1095MHz,*:1166MHz~1300MHz,*:1375MHz~1387MHz,*:1419.8MHz~1421.3MHz,*:1526MHz~1554MHz,*:1565MHz~1585MHz,*:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz'
+    ensure_valid: false
+flag__wb_manual:
+  enable: true
+  label_in: *wb_cal
+  field: *wb_cals
+  flag_spw:
+    enable: true
+    chans: '*:0.965290GHz~0.965930GHz,*:1.05161GHz~1.05245GHz,*:1.1026GHz~1.10344GHz,*:1.10887GHz~1.11598GHz,*:1.12768GHz~1.12831GHz,*:1.13583GHz~1.13834GHz,*:1.1421GHz~1.16595GHz,*:1.1862GHz~1.3045GHz,*:1.48964GHz~1.49298GHz,*:1.52057GHz~1.59195GHz,*:1.51827GHz,*:1.62632GHz'
+    ensure_valid: false
+  flag_time:
+    enable: true
+    timerange: '2021/07/05/16:17:30~2021/07/05/16:19:30,2021/07/05/16:27:00~2021/07/05/16:27:15'
+    ensure_valid: false
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
+flag__wb_rfi:
+  enable: true
+  label_in: *wb_cal
+  field: *wb_cals
+  flag_mask:
+    enable: true
+    mask: meerkat.rfimask.npy
+    uvrange: '0~1000'
+  flag_rfi:
+    enable: true
+    flagger: tricolour
+    tricolour:
+      strategy: khruschev.yaml
+
+crosscal__wb:
+  enable: true
+  label_in: *wb_cal
+  label_cal: 1gc
+  uvrange: '>150'
+  set_model:
+    enable: true
+    meerkat_skymodel: true
+  primary:
+    reuse_existing_gains: true
+    order: KGBAKGB
+    combine: ["scan,field", "spw", "scan,field", null, "", "", "scan"]
+    solint: [inf, inf, inf, null, int, int, inf]
+    calmode: [ap, ap, ap, null, ap, ap, ap]
+    b_fillgaps: 70
+    plotgains: true
+  secondary:
+    reuse_existing_gains: true
+    order: KGAKF
+    apply: B
+    combine: ["scan,field", "spw", null, "", ""]
+    solint: [inf, inf, null, 60s, 60s]
+    calmode: [ap, ap, null, ap, ap]
+    plotgains: true
+  apply_cal:
+    applyto:
+      - fcal
+      - bpcal
+      - gcal
+ # At the moment this step is necessary to produce the
+ # calibration txt file that lists the calibraion tables to apply
+ # Perhaps here is where a feature could be added to select
+ # previously calculated tables for use?
+transform__target:
+  enable: true
+  label_out: wb_corr
+  field: target
+  split_field:
+    enable: true
+    # Prior to imaging, calibrated visibilities are averaged by 4 channels in frequency and to 8 second integration time.
+    chan_avg: 4
+    otfcal:
+      enable: true
+      label_cal: 1gc
+      interpolation:
+        delay_cal: nearest
+        bp_cal: nearest
+        gain_cal: linear
+
+
+## Narrow band calibration using WB cal tables
+getdata__zoomband:
+  dataid: [1625501782_sdp_l0]
+  extension: ms
+
+transform__nb_calibrators:
+  enable: true
+  label_out: &nb_cal cal
+  field: &nb_cals calibrators
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: corrected
+    # Prior to nb calibration, stablise time dependent variations
+    # by applying wb delay and gain calibration solutions
+    otfcal:
+      enable: true
+      label_cal: 1gc
+      callib: callib-G330_OHline-1625501775_sdp_l0-1gc-applycal.txt
+      interpolation:
+        delay_cal: nearest
+        gain_cal: linear
+prep__nb_calibrators:
+  enable: true
+  label_in: *nb_cal
+  field: *nb_cals
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+flag__nb_calibrators:
+  enable: true
+  label_in: *nb_cal
+  field: *nb_cals
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+flag__nb_manual:
+  enable: true
+  label_in: *nb_cal
+  field: *nb_cals
+  # time and antenna flags from WB processing is carried over
+  # freq/ channel based flagging are done independently after inspecting the NB data
+  flag_time:
+    enable: true
+    timerange: '2021/07/05/16:17:30~2021/07/05/16:19:30,2021/07/05/16:27:00~2021/07/05/16:27:15'
+    ensure_valid: false
+  flag_antennas:
+    enable: true
+    antennas: 'm054'
+    ensure_valid: false
+crosscal:
+  enable: true
+  label_in: *nb_cal
+  label_cal: 1gc
+  uvrange: '>150'
+  set_model:
+    enable: true
+    meerkat_skymodel: true
+  primary:
+    reuse_existing_gains: true
+    order: KGBAKGB
+    combine: ["scan,field", "spw", "scan,field", null, "", "", "scan"]
+    solint: [inf, inf, inf, null, int, int, inf]
+    calmode: [ap, ap, ap, null, ap, ap, ap]
+    b_fillgaps: 70
+    plotgains: true
+  secondary:
+    reuse_existing_gains: true
+    order: KGAKF
+    apply: B
+    combine: ["scan,field", "spw", null, "", ""]
+    solint: [inf, inf, null, 60s, 60s]
+    calmode: [ap, ap, null, ap, ap]
+    plotgains: true
+  apply_cal:
+    applyto:
+      - fcal
+      - bpcal
+      - gcal
+
+
+# -fin-

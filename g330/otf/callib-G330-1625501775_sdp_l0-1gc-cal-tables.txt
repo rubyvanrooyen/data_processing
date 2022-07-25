@@ -1,0 +1,2 @@
+caltable="/stimela_mount/output/caltables/G330-1625501775_sdp_l0-1gc_secondary.F0" calwt=False tinterp='linear' finterp='linear' fldmap='nearest' field='G330.89-0.36' spwmap=0
+caltable="/stimela_mount/output/caltables/G330-1625501775_sdp_l0-1gc_secondary.K1" calwt=False tinterp='nearest' finterp='linear' fldmap='nearest' field='G330.89-0.36' spwmap=0
