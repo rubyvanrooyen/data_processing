@@ -1,1 +1,334 @@
-../../configs/run-3c39-32k.yml
+schema_version: 1.0.4
+
+general:
+  prefix: 3C39line
+  title: 3C39line
+  msdir: msdir
+  rawdatadir: ms-orig
+  output: output-3c39zoom-32k
+
+getdata:
+  dataid: [1627186165_sdp_l0]
+  extension: ms
+
+obsconf:
+  refant: auto
+
+
+## Processing calibrators
+# Narrow band zoom modes channelise the 32768 channels
+# For calibration average down to the wideband 4096 channels
+# Factor 8 averaging if all channels are available
+transform__calibrators:
+  enable: true
+  label_out: cal
+  field: calibrators
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: data
+
+prep__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    # these modes will prob be used for spectral lines, and flagged manually
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+#   flag_mask:
+#     enable: true
+#     mask: meerkat.rfimask.npy
+#     uvrange: '0~1000'
+# # from old Josh configs
+# #   flag_rfi:
+# #     enable: true
+# #     flagger: aoflagger
+# #     fields: 'auto'
+
+# flag__cal_rfi:
+#   enable: true
+#   label_in: cal
+#   field: calibrators
+#   flag_rfi:
+#     enable: true
+#     flagger: tricolour
+#     tricolour:
+#       strategy: khruschev.yaml
+
+# flag__cal_manual:
+#   enable: true
+#   label_in: cal
+#   field: calibrators
+#   flag_spw:
+#     enable: true
+#     chans: '*:1.41942GHz~1.4213GHz,*:1.52036GHz~1.59163GHz,*:1.62611GHz~1.62673GHz'
+#     ensure_valid: false
+#   flag_time:
+#     enable: true
+#     timerange: '2021/07/25/04:12:27~2021/07/25/04:12:28,2021/07/25/04:12:35~2021/07/25/04:12:52,2021/07/25/05:06:26~2021/07/25/05:06:35,2021/07/25/07:34:22~2021/07/25/07:35:19'
+#     ensure_valid: false
+
+crosscal:
+  enable: true
+  label_in: cal
+  label_cal: 1gc
+  uvrange: '>150'
+  set_model:
+    enable: true
+    meerkat_skymodel: true
+#     meerkat_skymodel: false
+  primary:
+    reuse_existing_gains: true
+    order: KGBAKGB
+    combine: ["scan,field", "spw", "scan,field", null, "", "", "scan"]
+    solint: [inf, inf, inf, null, int, int, inf]
+    calmode: [ap, ap, ap, null, ap, ap, ap]
+    b_fillgaps: 70
+    plotgains: true
+  secondary:
+    reuse_existing_gains: true
+    order: KGAKF
+    apply: B
+    combine: ["scan,field", "spw", null, "", ""]
+    solint: [inf, inf, null, 60s, 60s]
+    calmode: [ap, ap, null, ap, ap]
+    plotgains: true
+  apply_cal:
+    applyto:
+      - fcal
+      - bpcal
+      - gcal
+
+inspect:
+  enable: true
+  label_in: cal
+  field: calibrators
+  label_plot: 'plot_1gc'
+  dirname: crosscal
+  correlation: all
+  standard_plotter: none
+  shadems:
+    enable: true
+    default_column: CORRECTED_DATA
+    plots:
+      - desc: "plots by field"
+        field: "{all_fields}"
+        cnum: 100  # up 100 colours
+        iter_field: true
+        plots:
+          # phaseball plots
+          - dir: "phaseballs-{msbase}"
+            plots:
+              - "-x real -y imag -c CORR --corr IQUV --hline 0: --vline 0:"
+              - "-x real -y imag -c SCAN_NUMBER"
+              - "-x real -y imag -c ANTENNA1"
+          - dir: "phaseballs-bycorr-{msbase}"
+            iter_corr:
+            plots:
+              - "-x real -y imag -c SCAN_NUMBER"
+              - "-x real -y imag -c ANTENNA1"
+          # normalized phaseballs
+          - dir: "normballs-{msbase}"
+            col: "CORRECTED_DATA/MODEL_DATA"
+            corr: "XX,YY"
+            iter_corr:
+            plots:
+              - "-x real -y imag -c SCAN_NUMBER"
+              - "-x real -y imag -c ANTENNA1"
+          # block and triangle plots
+          - dir: "blockplots-{msbase}"
+            plots:
+              - "-x BASELINE_M -y FREQ -c amp"
+              - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis phase --ared std"
+              - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis amp --ared mean"
+          # amp/phase versus uv-distance, and uv-coverage coloured by amp/phase
+          - dir: "uvdist-{msbase}"
+            plots:
+              - "-x UV -y amp    -c SCAN_NUMBER"
+              - "-x UV -y amp    -c ANTENNA1"
+              - "-x UV -y phase  -c ANTENNA1 --corr XX,YY"
+              - "-x U  -y V      -c amp"
+              - "-x U  -y V      -c phase --cmin -5 --cmax 5"
+          # spectral plots
+          - dir: "spectra-{msbase}"
+            plots:
+              - "-x FREQ  -y amp  -c SCAN_NUMBER"
+              - "-x FREQ  -y amp  -c ANTENNA1"
+              - "-x FREQ  -y real -c CORR --corr IQUV --hline 0:"
+      # per-antenna plots
+      - iter_ant:
+        desc: "plots by antenna"
+        cmap: pride
+        corr: XX,YY
+        plots:
+          - '-x FREQ -y amp:I -c SCAN_NUMBER --cnum 100 --cmin 0 --cmax 30 --field {bpcal} --dir bpcal-iamp-byant-{msbase}'
+          - '-x FREQ -y SCAN_NUMBER -a amp --ared std --dir stdamp-byant-{msbase}'
+          - '-x FREQ -y SCAN_NUMBER -a phase --ared std --dir stdphase-byant-{msbase}'
+      # per-scan plots
+      - iter_scan:
+        desc: "plots by scan"
+        cmap: pride
+        ared: std
+        corr: XX,YY
+        plots:
+          - '-x ANTENNA1 -y ANTENNA2 -a amp --dir stdamp-byscan-{msbase}'
+          - '-x ANTENNA1 -y ANTENNA2 -a phase --dir stdphase-byscan-{msbase}'
+          - '-x BASELINE_M -y FREQ -a imag --amin 0 --amax 2 --dir stdimag-byscan-{msbase}'
+    ignore_errors: true
+
+## Continuum imaging of target
+
+transform__target:
+  enable: true
+  label_out: corr
+  field: target
+  split_field:
+    enable: true
+    otfcal:
+      enable: true
+      label_cal: 1gc
+      interpolation:
+        delay_cal: nearest
+        bp_cal: nearest
+        gain_cal: linear
+
+prep__target:
+  enable: true
+  label_in: corr
+  field: target
+  fixuvw:
+    enable: true
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__target:
+  enable: true
+  label_in: corr
+  field: target
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # BEWARE the aggressive flagging at the end of the band where you line lies -- *:1592MHz~1610MHz,*:1616MHz~1626MHz,*:1658MHz~1800MHz
+    # rather inspect and flag those regions manually
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+# not sure if this will flag out my line -- will first not use it
+#   flag_mask:
+#     enable: true
+#     mask: meerkat.rfimask.npy
+#     uvrange: '0~1000'
+# from old Josh configs
+#   flag_rfi:
+#     enable: true
+#     flagger: aoflagger
+#     fields: target
+  inspect:
+    enable: false
+    field: target
+
+# flag__tgt_manual:
+#   enable: true
+#   label_in: cont
+#   field: target
+#   flag_spw:
+#     enable: true
+#     chans: '*:0.960806GHz~0.961642GHz,*:1.41942GHz~1.4213GHz,*:1.51921GHz~1.59163GHz,*:1.62611GHz~1.63039GHz'
+#     ensure_valid: false
+#   flag_time:
+#     enable: true
+#     timerange: '2021/07/25/07:10:39~2021/07/25/07:11:36'
+#     ensure_valid: false
+# 
+# flag__target_rfi:
+#   enable: true
+#   label_in: cont
+#   field: target
+#   flag_rfi:
+#     enable: true
+#     flagger: tricolour
+#     tricolour:
+#       strategy: khruschev.yaml
+
+mask:
+  enable: false
+
+# selfcal:
+#   enable: true
+#   label: cont
+#   ncpu: 40
+#   img_npix: 3600
+#   img_cell: 2
+#   img_niter: 1000000
+#   img_nchans: 12
+#   cal_niter: 4
+#   image:
+#     enable: true
+#     auto_mask: [20,15,10,5,5]
+#     auto_threshold: [0.5,0.5,0.5,0.3,0.3]
+#   calibrate:
+#     enable: true
+#     model: ['1','2','3','4']
+#     gain_matrix_type: ['GainDiagPhase', 'GainDiagPhase', 'GainDiagPhase', 'GainDiag']
+#     Gsols_channel: ['0', '0', '0', '100']
+#     Gsols_time: ['120', '120', '60', '60']
+#     shared_memory: 250GB
+#   transfer_apply_gains:
+#     enable: true
+#     transfer_to_label: cont
+#   transfer_model:
+#     enable: true
+#     num_workers: 40
+#     memory_fraction: 0.45
+#     transfer_to_label: cont
+# 
+# image_line:
+#   enable: true
+#   label: 'l'
+#   restfreq: '1.420405752GHz'
+#   subtractmodelcol:
+#     enable: true
+#   make_cube:
+#     enable: true
+#     npix: [1800]
+#     cell: 3
+#     taper: 10
+#     robust: 0
+#   mstransform: 
+#     enable: true
+#     telescope: meerkat
+#     fitorder: 1
+# #    fitspw: '*:1300~1417.2MHz,*:1421.0~1600MHz'
+#   pb_cube:
+#     enable: true
+#   freq_to_vel:
+#     enable: false
+#   remove_stokes_axis:
+#     enable: true
+#   sofia:
+#     enable: true
+
+
+# -fin-
