@@ -1,0 +1,495 @@
+# This script describes MeerKAT data reduction using CARACAL to read, flag, calibrate, continuum
+# subtract, and image the data.
+# Plotting for datasets with ShameMS and viewing with radio padre
+# This is a pipeline script and designed to be executed an a full config
+# or selected workers
+
+schema_version: 1.0.4
+
+
+## Generate MS for calibration
+# Compulsory worker to set up data/input/output directories.
+# The prefix used for the output data products (e.g., diagnostic plots, images, etc.).
+general:
+  prefix: 3C39_comet_OHline
+  title: 3C39_comet_OHline
+  # Location where CARACal will write and expect to find .MS files
+  msdir: msdir
+  # This directory and the input .MS files within it can be read-only
+  rawdatadir: ms-orig
+  # Location where CARACal writes output products
+  output: output-3c39zoom-32k
+
+# Compulsory worker to specify the input .MS files.
+getdata:
+  dataid: [1627186165_sdp_l0]
+  extension: ms
+
+# Compulsory worker to set up target/calibrators names.
+obsconf:
+  refant: auto
+  obsinfo:
+    enable: True
+
+
+## Processing calibrators
+# Calibrators-only .MS file
+# Split calibrators-only .MS files, one per input .MS file.
+# This worker splits the calibrators (in preparation for cross-calibration) or the targets (in
+# preparation for imaging) to new .MS files. Time and frequency averaging is available, as well as
+# phase rotation to a new phase centre. Crosscalibration can be applied on the fly while splitting.
+# Narrow band zoom modes channelise the 32768 channels
+# For calibration average down to the wideband 4096 channels
+# Factor 8 averaging if all channels are available
+transform__calibrators:
+  enable: true
+  label_out: cal
+  field: calibrators
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: data
+
+# Prepare the calibrators-only .MS files for processing.
+prep__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+
+## Initial inspection and flagging
+# Make an inital amplitude vs. channel plot of the bandpass calibrator averaging all the data
+# together in time.
+# Next plot phase vs. channel.
+# Now plot amplitude and phase as a function of time.
+# 0a. Flag out band edges
+# 0b. Automated flagging for shadowing, elevation and extreme outliers
+# 0c. Flagging of identified bad data
+# Check that bad data is gone
+flag__calibrators:
+  enable: true
+  label_in: cal
+  field: calibrators
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    # for calibration flag out line ranges as well
+    # these modes will prob be used for spectral lines, and flagged manually
+    # add some edge flags to retain the clean central passband
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+  flag_scan:
+    enable: true
+    scans: '23,27'
+  flag_time:
+    enable: true
+    timerange: '2021/07/25/04:12:36.2946,2021/07/25/04:17:15.7058'
+    ensure_valid: false
+  flag_mask:
+    enable: true
+    mask: meerkat.rfimask.npy
+    uvrange: '0~500'
+  flag_rfi:
+    enable: true
+    flagger: aoflagger
+
+
+# Derive the cross-calibration tables and apply them to the calibrators.
+# Carry out Cross calibration of the data (delay, bandpass and gain calibration).
+crosscal:
+  enable: true
+  label_in: cal
+  label_cal: 1gc
+  uvrange: '>150'
+  set_model:
+    enable: true
+    meerkat_skymodel: true
+  primary:
+    reuse_existing_gains: false
+    order: KGBAKGB
+    combine: ["scan,field", "", "scan,field", null, "", "", "scan"]
+    solint: [inf, inf, inf, null, int, int, inf]
+    calmode: [ap, ap, ap, null, ap, ap, ap]
+    b_fillgaps: 70
+    b_smoothwindow: 32
+    plotgains: true
+  secondary:
+    reuse_existing_gains: false
+    # Next we apply the antenna based bandpass, and phase only solution to solve for amplitude
+    # solutions over a longer solint (to increase S/N).
+    # The spwmap=[[0],[]] tells it that the pcal solution is independent of spw while the bpoly
+    # solution is per spw, spwmap order must be in the same order as the tables in gaintable.
+    # Derive absolute flux calibration (based on setjy above)
+    order: KGAKF
+    apply: B
+    combine: ["scan,field", "", null, "", ""]
+    solint: [inf, inf, null, int, int]
+    calmode: [ap, ap, null, ap, ap]
+    plotgains: true
+  apply_cal:
+  # Although in previous steps solutions were applied "on-the-fly", the data were not actually
+  # changed. Running applycal will fill the corrected data column in the ms. Again be careful with
+  # specification of gaintable, and keeping the same order in spwmap and gainfield.
+    applyto:
+      - fcal
+      - bpcal
+      - gcal
+
+
+# This worker plot the visibilities for diagnostic purpose.
+# Inspect the calibrated calibrator’s visibilities to check the quality of the
+# cross-calibration.
+inspect:
+  enable: true
+  label_in: cal
+  field: calibrators
+  label_plot: 'plot_1gc'
+  dirname: crosscal
+  correlation: all
+  standard_plotter: none
+  shadems:
+    enable: true
+    default_column: CORRECTED_DATA
+    plots:
+      - desc: "plots by field"
+        field: "{all_fields}"
+        cnum: 100  # up 100 colours
+        iter_field: true
+        plots:
+          # phaseball plots
+          - dir: "phaseballs-{msbase}"
+            plots:
+              - "-x real -y imag -c CORR --corr IQUV --hline 0: --vline 0:"
+              - "-x real -y imag -c SCAN_NUMBER"
+              - "-x real -y imag -c ANTENNA1"
+          - dir: "phaseballs-bycorr-{msbase}"
+            iter_corr:
+            plots:
+              - "-x real -y imag -c SCAN_NUMBER"
+              - "-x real -y imag -c ANTENNA1"
+          # normalized phaseballs
+          - dir: "normballs-{msbase}"
+            col: "CORRECTED_DATA/MODEL_DATA"
+            corr: "XX,YY"
+            iter_corr:
+            plots:
+              - "-x real -y imag -c SCAN_NUMBER"
+              - "-x real -y imag -c ANTENNA1"
+          # block and triangle plots
+          - dir: "blockplots-{msbase}"
+            plots:
+              - "-x BASELINE_M -y FREQ -c amp"
+              - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis phase --ared std"
+              - "-x ANTENNA1 -y ANTENNA2 -c SCAN_NUMBER --aaxis amp --ared mean"
+          # amp/phase versus uv-distance, and uv-coverage coloured by amp/phase
+          - dir: "uvdist-{msbase}"
+            plots:
+              - "-x UV -y amp    -c SCAN_NUMBER"
+              - "-x UV -y amp    -c ANTENNA1"
+              - "-x UV -y phase  -c ANTENNA1 --corr XX,YY"
+              - "-x U  -y V      -c amp"
+              - "-x U  -y V      -c phase --cmin -5 --cmax 5"
+          # spectral plots
+          - dir: "spectra-{msbase}"
+            plots:
+              - "-x FREQ  -y amp  -c SCAN_NUMBER"
+              - "-x FREQ  -y amp  -c ANTENNA1"
+              - "-x FREQ  -y real -c CORR --corr IQUV --hline 0:"
+      # per-antenna plots
+      - iter_ant:
+        desc: "plots by antenna"
+        cmap: pride
+        corr: XX,YY
+        plots:
+          - '-x FREQ -y amp:I -c SCAN_NUMBER --cnum 100 --cmin 0 --cmax 30 --field {bpcal} --dir bpcal-iamp-byant-{msbase}'
+          - '-x FREQ -y SCAN_NUMBER -a amp --ared std --dir stdamp-byant-{msbase}'
+          - '-x FREQ -y SCAN_NUMBER -a phase --ared std --dir stdphase-byant-{msbase}'
+      # per-scan plots
+      - iter_scan:
+        desc: "plots by scan"
+        cmap: pride
+        ared: std
+        corr: XX,YY
+        plots:
+          - '-x ANTENNA1 -y ANTENNA2 -a amp --dir stdamp-byscan-{msbase}'
+          - '-x ANTENNA1 -y ANTENNA2 -a phase --dir stdphase-byscan-{msbase}'
+          - '-x BASELINE_M -y FREQ -a imag --amin 0 --amax 2 --dir stdimag-byscan-{msbase}'
+    ignore_errors: true
+
+
+## Extract calibrated target visibilities
+# Imaging wideband target
+# Target-only .MS file
+# Split target-only .MS files, one per input .MS file and target, applying the
+# cross-calibration on the fly.
+transform__target:
+  enable: true
+  label_out: corr
+  field: target
+  split_field:
+    enable: true
+    otfcal:
+      enable: true
+      label_cal: 1gc
+      interpolation:
+        delay_cal: nearest
+        bp_cal: nearest
+        gain_cal: nearest
+
+
+## Prepare the target-only .MS files for processing.
+prep__target:
+  enable: true
+  label_in: corr
+  field: target
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__target:
+  enable: true
+  label_in: corr
+  field: target
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    # these modes will prob be used for spectral lines, and flagged manually
+    # add some edge flags to retain the clean central passband
+    chans: '*:1630MHz~1655MHz,*:1675MHz~1700MHz'
+    ensure_valid: false
+  inspect:
+    enable: false
+    field: target
+
+flag__tgt_manual:
+  enable: true
+  label_in: corr
+  field: target
+  flag_scan:
+    enable: true
+    scans: '24'
+  inspect:
+    enable: false
+    field: target
+
+## Continuum imaging of target
+# Split, average and/or calibrate the data.
+# averaged by 8 channels in frequency and
+# to 8 second integration time (4096).
+transform__conttarget:
+  enable: true
+  label_in: corr
+  label_out: cont
+  field: target
+  # average down channels for cont imaging
+  split_field:
+    enable: true
+    # corr spectral line output has 32768 channels
+    # avg = 8: 4096 channels
+    # avg = 16: 2048 channels
+    # avg = 32: 1024 channels
+    chan_avg: 16
+    otfcal:
+      enable: false
+
+mask:
+  enable: false
+
+# for continuum imaging, flag out the line frequencies, only retain diffuse emission
+flag__conttarget:
+  enable: true
+  label_in: cont
+  field: target
+  flag_rfi:
+    enable: true
+    flagger: aoflagger
+  flag_spw:
+    enable: true
+    # flag out maser and OH lines for calibration
+    # we know freq at lsrk, perhaps don't flag, not neccessary
+    chans: '*:1.6653GHz~1.6663GHz,*:1.6673GHz~1.6683GHz'
+    ensure_valid: false
+
+
+# This worker performs continuum imaging and standard (i.e., direction-independent) self-calibration.
+# Make a continuum image of each target, self-calibrate, and transfer both gains
+# and continuum model to the full-frequency-resolution target-only .MS files.
+# Iteratively image the radio continuum emission and self-calibrate the visibilities.
+# The resulting gain tables and continuum model can also be transferred to another .MS file
+# create initial model, create calibration table, inspect solutions, determine best solution interval, applycal, split, next round
+# Important parameters to control memory usage of large data sets:
+# ncpu, cal_timeslots_chunk, chan_chunk, dist_max_chunks
+selfcal:
+  enable: true
+  label_in: cont
+  # Number of pixels in output image (MeerKAT imsize>=8192)
+  img_npix: 10000
+  # Image pixel size in units of arcsec (MeerKAT cellsizei<='1.5arcsec')
+  img_cell: 0.8
+  # Number of channels in output image
+  img_nchans: 8
+  # Switch off multiscale cleaning
+  img_multiscale: false
+  # Number of cleaning iterations
+  img_niter: 100000
+  # Number of spectral polynomial terms to fit to each clean component
+  img_specfit_nrcoeff: 4
+  # Chunk data up by this number of timeslots.
+  cal_timeslots_chunk: 12
+  # Imaging parameters
+  image:
+    enable: true
+  # Calibration parameters
+  calibrate:
+    enable: true
+    gain_matrix_type: [GainDiagPhase, GainDiagPhase]
+    # G-Jones frequency solution interval.
+    # Should be a multiple of chan_chunk
+    # 0 entails using a single solution for the full bandwidth
+    gsols_chan: [256]
+    # G-Jones time solution interval
+    # reduce time chunk size
+    gsols_timeslots: [4]
+  cal_cubical:
+    # chunk data up by number of channels
+    # An upper limit on the frequency solution intervals (gsols_chan)
+    # 0: use the full frequency axis
+    # -1: use the largest solution interval
+    dist_max_chunks: 12
+  # Interpolate gains over the high frequency-resolution data
+  # If the self-cal loop was executed on a frequency-averaged .MS file, it might be necessary to transfer the resulting gains and continuum model back to the original .MS file.
+  transfer_apply_gains:
+    enable: true
+    # Label of cross-calibrated .MS file to which to transfer and apply the selfcal gains.
+    transfer_to_label: corr
+  # Transfer the model from the last WSClean imaging run to the MODEL_DATA column of another .MS
+  transfer_model:
+    enable: true
+    # Label of the .MS file to which to transfer the model.
+    transfer_to_label: corr
+
+
+## Split out 1665 OH line and build cube
+# Build a smaller MS using channel averaging for line analysis
+# For 54M mode the velocity resolution is approx = 0.297 km/s
+# Assuming the maser line width is around 1 km/s the line amplitude will be distributed over 3 channels
+# Since we are not looking at the line shape, but trying to find the total intensity variation of the line
+# and if we can detect the line, average the data to combine the visibilities of 3 channel chunks
+# The OH maser transition lines are split into a separate MS for processing.
+## Split out 1665 OH line and build cube
+transform__line1665:
+  enable: true
+  label_in: corr
+  label_out: line1665
+  field: target
+  split_field:
+    enable: true
+    col: corrected
+    # choose a large region the line may move 1.663GHz~1.666GHz
+    spw: '*:1.66494GHz~1.66681GHz'
+    otfcal:
+      enable: false
+
+line__oh1665:
+  enable: true
+  label_in: line1665
+  line_name: OH
+  restfreq: '1.66540184GHz'
+  subtractmodelcol:
+    enable: true
+  mstransform:
+    enable: true
+    doppler:
+      enable: true
+      telescope: meerkat
+      # Currently, only frequency mode is supported
+      mode: frequency
+      # Output reference frame (default = bary)
+      frame: lsrk
+    uvlin:
+      enable: True
+      # Using a fit order greater than 1 is strongly discouraged as high order polynomials can absorb line emission or vary drastically at the edges of the provided continuum range of spectral windows.
+      fitorder: 1
+      fitspw: '*:1.66494GHz~1.66552GHz,*:1.66602GHz~1.66681GHz'
+  make_cube:
+    enable: true
+    npix: [8192]
+    cell: 1.5
+    taper: 0
+    robust: 0
+    casa_thr: '1.0mJy'
+    niter: 20000
+    wscl_sofia_niter: 1
+  pb_cube:
+    enable: true
+  freq_to_vel:
+    enable: true
+#     enable: false
+  remove_stokes_axis:
+    enable: true
+
+
+# The OH maser transition lines are split into a separate MS for processing.
+## Split out 1667 OH line and build cube
+transform__line1667:
+  enable: true
+  label_in: corr
+  label_out: line1667
+  field: target
+  split_field:
+    enable: true
+    col: corrected
+    spw: '*:1.66662GHz~1.66915GHz'
+    otfcal:
+      enable: false
+
+line__oh1667:
+  enable: true
+  label_in: line1667
+  line_name: OH
+  restfreq: '1.66735903GHz'
+  subtractmodelcol:
+    enable: true
+  mstransform:
+    enable: true
+    doppler:
+      enable: true
+      telescope: meerkat
+      # Currently, only frequency mode is supported
+      mode: frequency
+      # Output reference frame (default = bary)
+      frame: lsrk
+    uvlin:
+      enable: True
+      fitorder: 1
+      fitspw: '*:1.66662GHz~1.6674GHz,*:1.66793GHz~1.66915GHz'
+  make_cube:
+    enable: true
+    npix: [8192]
+    cell: 1.5
+    taper: 0
+    robust: 0
+    casa_thr: '1.0mJy'
+    niter: 20000
+    wscl_sofia_niter: 1
+  pb_cube:
+    enable: true
+  freq_to_vel:
+    enable: false
+  remove_stokes_axis:
+    enable: true
+
+# -fin-
