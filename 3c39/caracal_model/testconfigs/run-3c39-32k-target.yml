@@ -1,0 +1,275 @@
+schema_version: 1.0.4
+
+
+## Generate MS for calibration
+# Compulsory worker to set up data/input/output directories.
+# The prefix used for the output data products (e.g., diagnostic plots, images, etc.).
+general:
+  prefix: 3C39_comet
+  title: 3C39_comet
+  # Location where CARACal will write and expect to find .MS files
+  msdir: msdir-3c39-bpoly
+  # This directory and the input .MS files within it can be read-only
+  rawdatadir: ms-orig
+  # Location where CARACal writes output products
+  output: output-3c39-bpoly
+
+# Compulsory worker to specify the input .MS files.
+getdata:
+  dataid: [1627186165_sdp_l0]
+  extension: ms
+
+# Compulsory worker to set up target/calibrators names.
+obsconf:
+  refant: auto
+  obsinfo:
+    enable: True
+    plotelev:
+      enable: True
+      plotter: plotms
+
+
+##Continuum imaging of target
+# Prepare the target-only .MS files for processing.
+# Split, average and/or calibrate the data.
+transform:
+  enable: true
+  label_out: corr
+  field: target
+  # average down channels for cont imaging
+  split_field:
+    enable: true
+    chan_avg: 8
+    col: data
+    # not currently available for BPOLY calibrations tables
+    otfcal:
+      enable: false
+
+prep__target:
+  enable: true
+  label_in: corr
+  field: target
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__target:
+  enable: true
+  label_in: corr
+  field: target
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    # these modes will prob be used for spectral lines, and flagged manually
+    # add some edge flags to retain the clean central passband
+    chans: '*:1630MHz~1657MHz,*:1673MHz~1700MHz,*:1657MHz~1661MHz'
+    ensure_valid: false
+  inspect:
+    enable: false
+    field: target
+
+# for continuum imaging, flag out the line frequencies, only retain diffuse emission
+flag__tgt_manual:
+  enable: true
+  label_in: corr
+  field: target
+  flag_scan:
+    enable: true
+    scans: '24'
+#   flag_spw:
+#     enable: true
+#     chans: '*:1.6653GHz~1.6663GHz,*:1.6673GHz~1.6683GHz'
+#     ensure_valid: false
+
+
+
+mask:
+  enable: false
+
+## Apply calibration manually
+# applycal(vis="1627186165_sdp_l0-3c39-corr.ms",
+#          field="3c39",
+#          gaintable=['3C39_comet-1627186165_sdp_l0-1gc_secondary.K1',
+#                     '3C39_comet-1627186165_sdp_l0-1gc_primary.P1',
+#                     '3C39_comet_OH-1627186165_sdp_l0-1gc_secondary.F0'],
+#          gainfield=['J0108+0134','J0408-6545','J0108+0134'],
+#          interp=['nearest', 'nearest', 'linear'])
+
+
+# selfcal:
+#   enable: true
+#   label: cont
+#   ncpu: 40
+#   img_npix: 3600
+#   img_cell: 2
+#   img_niter: 1000000
+#   img_nchans: 12
+#   cal_niter: 4
+#   image:
+#     enable: true
+#     auto_mask: [20,15,10,5,5]
+#     auto_threshold: [0.5,0.5,0.5,0.3,0.3]
+#   calibrate:
+#     enable: true
+#     model: ['1','2','3','4']
+#     gain_matrix_type: ['GainDiagPhase', 'GainDiagPhase', 'GainDiagPhase', 'GainDiag']
+#     Gsols_channel: ['0', '0', '0', '100']
+#     Gsols_time: ['120', '120', '60', '60']
+#     shared_memory: 250GB
+#   transfer_apply_gains:
+#     enable: true
+#     transfer_to_label: cont
+#   transfer_model:
+#     enable: true
+#     num_workers: 40
+#     memory_fraction: 0.45
+#     transfer_to_label: cont
+
+
+## Spectral line analysis
+# Prepare a target-only .MS file for analysis
+# Split and/or calibrate the data
+transform__line_target:
+  enable: true
+  label_out: line
+  field: target
+  split_field:
+    enable: true
+    col: data
+    # not currently available for BPOLY calibrations tables
+    otfcal:
+      enable: false
+
+prep__line_target:
+  enable: true
+  label_in: line
+  field: target
+  clearcal: true
+  specweights:
+    enable: true
+    mode: uniform
+
+flag__line_target:
+  enable: true
+  label_in: line
+  field: target
+  flag_autocorr:
+    enable: true
+  flag_shadow:
+    enable: true
+  flag_spw:
+    enable: true
+    # for narrow band only flag out the band edges
+    # these modes will prob be used for spectral lines, and flagged manually
+    # add some edge flags to retain the clean central passband
+    chans: '*:1630MHz~1657MHz,*:1673MHz~1700MHz,*:1657MHz~1661MHz'
+    ensure_valid: false
+  flag_scan:
+    enable: true
+    scans: '24'
+  inspect:
+    enable: false
+    field: target
+
+
+## Apply calibration manually 
+# applycal(vis="1627186165_sdp_l0-3c39-line.ms",
+#          field="3c39",
+#          gaintable=['3C39_comet-1627186165_sdp_l0-1gc_secondary.K1',
+#                     '3C39_comet-1627186165_sdp_l0-1gc_primary.P1',
+#                     '3C39_comet_OH-1627186165_sdp_l0-1gc_secondary.F0'],
+#          gainfield=['J0108+0134','J0408-6545','J0108+0134'],
+#          interp=['nearest', 'nearest', 'linear'])
+
+## Split out 1665 OH line and build cube
+transform__line_1665:
+  enable: true
+  label_in: line
+  label_out: OH1665
+  field: target
+  split_field:
+    enable: true
+    col: corrected
+    spw: '*:1.66494GHz~1.66681GHz'
+    otfcal:
+      enable: false
+
+line__oh1665:
+  enable: true
+#   label_in: line
+  label_in: OH1665
+#   line_name: OH1665
+  line_name: OH
+  restfreq: '1.66540184GHz'
+  subtractmodelcol:
+    enable: false
+  mstransform: 
+    enable: true
+    uvlin:
+      enable: True
+      fitorder: 1
+      fitspw: '*:1.66494GHz~1.66552GHz,*:1.66602GHz~1.66681GHz'
+  make_cube:
+    enable: true
+    npix: [8192]
+    cell: 1.5
+    taper: 0
+    robust: 0
+    casa_thr: '1.0mJy'
+    niter: 20000
+  pb_cube:
+    enable: true
+  freq_to_vel:
+    enable: false
+  remove_stokes_axis:
+    enable: true
+
+
+## Split out 1667 OH line and build cube
+transform__line_1667:
+  enable: false
+  label_in: line
+  label_out: OH1667
+  field: target
+  split_field:
+    enable: true
+    col: corrected
+    spw: '*:1.66662GHz~1.66915GHz' 
+    otfcal:
+      enable: false
+
+line__oh1667:
+  enable: false
+  label_in: line
+  line_name: OH1667
+  restfreq: '1.66735903GHz'
+  subtractmodelcol:
+    enable: false
+  mstransform: 
+    enable: true
+    uvlin:
+      enable: True
+      fitorder: 1
+      fitspw: '*:1.66662GHz~1.6674GHz,*:1.66793GHz~1.66915GHz'
+  make_cube:
+    enable: true
+    npix: [8192]
+    cell: 1.5
+    taper: 0
+    robust: 0
+    casa_thr: '1.0mJy'
+    niter: 20000
+  pb_cube:
+    enable: true
+  freq_to_vel:
+    enable: false
+  remove_stokes_axis:
+    enable: true
+
+
+# -fin-
