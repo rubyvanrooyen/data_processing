@@ -432,6 +432,7 @@ line__oh1665:
     robust: 0
     casa_thr: '1.0mJy'
     niter: 20000
+    wscl_sofia_niter: 1
   pb_cube:
     enable: true
   freq_to_vel:
@@ -483,6 +484,7 @@ line__oh1667:
     robust: 0
     casa_thr: '1.0mJy'
     niter: 20000
+    wscl_sofia_niter: 1
   pb_cube:
     enable: true
   freq_to_vel:
